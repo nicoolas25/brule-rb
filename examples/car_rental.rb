@@ -92,7 +92,7 @@ end
 # ---
 #
 # Starting from `2020-06-01` we'll introduce a new way to do the pricing. The
-# new feature will be called _"discounts"_. If the longer is the rental the more
+# new feature will be called _"discounts"_. The longer the rental is the more
 # its price will decrease. For this iteration, the discount, in percentage, will
 # follow this formula:
 #
