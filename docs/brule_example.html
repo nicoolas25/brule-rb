@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>brule_example.rb</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>brule_example.rb</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              <p>This example is from the perpective of a car rental company. It revolves
+around the pricing of a car for a given <code>Rental</code>.</p>
+<p>A <code>Rental</code> represents a <em>car</em> being shared for a given <em>period</em> of time.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+Rental = Struct.new(<span class="hljs-symbol">:car</span>, <span class="hljs-symbol">:period</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <hr>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>At the beginning, <code>2020-04-01</code>, logic is simple. There is one way to
+compute the price of a <code>Rental</code>. It is the <em>price per day</em> times the
+<em>number of days</em>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Rental</span></span>
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">price</span></span>
+    duration * car.price_per_day
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">duration</span></span>
+    <span class="hljs-number">1</span> + (period.end_on - period.start_on).to_i
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p>To show the whole code, here are the <code>Car</code> and <code>Period</code> class. One could easily
+argue and convice me to put <code>#duration</code> in period rather than in <code>Rental</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-keyword">require</span> <span class="hljs-string">"date"</span>
+
+Car = Struct.new(<span class="hljs-symbol">:price_per_day</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>)
+
+Period = Struct.new(<span class="hljs-symbol">:start_at</span>, <span class="hljs-symbol">:end_at</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>) <span class="hljs-keyword">do</span>
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">start_on</span></span>
+    start_at.to_date
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">end_on</span></span>
+    end_at.to_date
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <hr>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p>Because the <code>Car#price_per_day</code> can change outside of the lifecycle of a
+<code>Rental</code>, we’ll denormalize it. Without that, the <code>Rental#price</code> could change
+if the <code>Car#price_per_day</code> is updated.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+car = Car.new(<span class="hljs-symbol">price_per_day:</span> <span class="hljs-number">30</span>)
+rental = Rental.new(
+  <span class="hljs-symbol">car:</span> car,
+  <span class="hljs-symbol">period:</span> Period.new(
+    <span class="hljs-symbol">start_at:</span> Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">4</span>, <span class="hljs-number">1</span>),
+    <span class="hljs-symbol">end_at:</span> Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">4</span>, <span class="hljs-number">3</span>),
+  ),
+)
+
+rental.price <span class="hljs-comment"># =&gt; 90</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>That is the situation we want to avoid:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>car.price_per_day = <span class="hljs-number">10</span>
+rental.price <span class="hljs-comment"># =&gt; 30</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p>Let’s reopen the <code>Rental</code> class and add stuff to avoid it…</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Rental</span></span>
+  <span class="hljs-keyword">attr_reader</span> <span class="hljs-symbol">:car_price_per_day</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">initialize</span><span class="hljs-params">(*)</span></span>
+    <span class="hljs-keyword">super</span>
+    @car_price_per_day = car.price_per_day
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">price</span></span>
+    duration * car_price_per_day
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <hr>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <p>A <code>Rental</code> can be updated. It means that its start_on and end_on dates can be
+updated. The desired side-effect of that is to change the <code>Rental#price</code>. Here
+I decided to instanciate another <code>Rental</code>, keeping the denormalized price of
+the car: <code>@car_price_per_day</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Rental</span></span>
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">adjust</span><span class="hljs-params">(new_period)</span></span>
+    dup.tap <span class="hljs-keyword">do</span> <span class="hljs-params">|new_rental|</span>
+      new_rental.period = new_period
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <hr>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-12">&#182;</a>
+              </div>
+              <p>Starting from <code>2020-06-01</code> we’ll introduce a new way to do the pricing. The
+new feature will be called <em>“discounts”</em>. If the longer is the rental the more
+its price will decrease. For this iteration, the discount, in percentage, will
+follow this formula:</p>
+<p><code>discount = min(40, max(0, 2 * duration - 4))</code></p>
+<img alt="https://cl.ly/20ef2ddde07a" src="https://cl.ly/20ef2ddde07a/discount.png" width="100%" />
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Rental</span></span>
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">price</span></span>
+    duration * car_price_per_day * (<span class="hljs-number">1</span> - discount)
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">discount</span></span>
+    (<span class="hljs-number">2</span> * duration - <span class="hljs-number">4</span>).clamp(<span class="hljs-number">0</span>, <span class="hljs-number">40</span>) / <span class="hljs-number">100.0</span>
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <p>That should work. But what about rentals from before <code>2020-06-01</code>? And what
+does <em>“a rental from before <code>2020-06-01</code>“</em> means? To know which pricing to
+use, we need to answer that first.</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <p>We consider the time the car was selected by the driver as the reference time
+to decide which pricing must apply. We can change a bit the <code>Rental</code> to
+include that information.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+Rental = Struct.new(<span class="hljs-symbol">:car</span>, <span class="hljs-symbol">:period</span>, <span class="hljs-symbol">:selected_at</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+              <p>From there, we can tweak the discount method to add a conditional:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Rental</span></span>
+  DISCOUNT_APPLY_AFTER = Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">6</span>, <span class="hljs-number">1</span>)
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">discount</span></span>
+    <span class="hljs-keyword">if</span> selected_at &gt;= DISCOUNT_APPLY_AFTER
+      (<span class="hljs-number">2</span> * duration - <span class="hljs-number">4</span>).clamp(<span class="hljs-number">0</span>, <span class="hljs-number">40</span>) / <span class="hljs-number">100.0</span>
+    <span class="hljs-keyword">else</span>
+      <span class="hljs-number">0</span>.<span class="hljs-number">0</span>
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-16">&#182;</a>
+              </div>
+              <p>If we take a rental that spans on 3 days, we can see the discount is being
+applied only when the <code>selected_at</code> is after <code>DISCOUNT_APPLY_AFTER</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+price_for_3_days = -&gt;(selected_at) {
+  Rental.new(
+    <span class="hljs-symbol">car:</span> Car.new(<span class="hljs-symbol">price_per_day:</span> <span class="hljs-number">30</span>),
+    <span class="hljs-symbol">period:</span> Period.new(
+      <span class="hljs-symbol">start_at:</span> Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">10</span>, <span class="hljs-number">1</span>, <span class="hljs-number">8</span>),  <span class="hljs-comment"># 2020-10-01 08:00</span>
+      <span class="hljs-symbol">end_at:</span> Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">10</span>, <span class="hljs-number">3</span>, <span class="hljs-number">12</span>),   <span class="hljs-comment"># 2020-10-03 12:00</span>
+    ),
+    <span class="hljs-symbol">selected_at:</span> selected_at,
+  ).price.round(<span class="hljs-number">2</span>)
+}
+
+price_for_3_days.call(Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">5</span>, <span class="hljs-number">15</span>))  <span class="hljs-comment"># =&gt; 90.0</span>
+price_for_3_days.call(Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">6</span>, <span class="hljs-number">15</span>))  <span class="hljs-comment"># =&gt; 88.2 (2% discount)</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-17">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-17">&#182;</a>
+              </div>
+              <hr>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-18">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-18">&#182;</a>
+              </div>
+              <p>This starts to smell bad for the long term already. If requirements
+continue to pile up like this, the pricing code could become a mess.</p>
+<p>For the sake of it, let’s add another change…</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-19">&#182;</a>
+              </div>
+              <p>Starting from <code>2020-08-01</code> we would like to price rentals on a per-minute
+basis. Lets consider a very simplistic version for this. The price per
+minute will simply be the price per day divided by the number of minutes in
+a day.</p>
+<p>Looking at the whole <code>Rental</code> class, we now have something pretty big
+(apologies for the magic-numbers).</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+Rental = Struct.new(<span class="hljs-symbol">:car</span>, <span class="hljs-symbol">:period</span>, <span class="hljs-symbol">:selected_at</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>) <span class="hljs-keyword">do</span>
+  <span class="hljs-keyword">attr_reader</span> <span class="hljs-symbol">:car_price_per_day</span>
+
+  DISCOUNT_APPLY_AFTER = Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">6</span>, <span class="hljs-number">1</span>)
+  PRICE_PER_MINUTE_APPLY_AFTER = Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">8</span>, <span class="hljs-number">1</span>)
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">initialize</span><span class="hljs-params">(*)</span></span>
+    <span class="hljs-keyword">super</span>
+    @car_price_per_day = car.price_per_day
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">price</span></span>
+    base_price =
+      <span class="hljs-keyword">if</span> selected_at &gt;= PRICE_PER_MINUTE_APPLY_AFTER
+        duration_in_minutes * car_price_per_minute
+      <span class="hljs-keyword">else</span>
+        duration * car_price_per_day
+      <span class="hljs-keyword">end</span>
+
+    base_price * (<span class="hljs-number">1</span> - discount)
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">discount</span></span>
+    <span class="hljs-keyword">if</span> selected_at &gt;= DISCOUNT_APPLY_AFTER
+      (<span class="hljs-number">2</span> * duration - <span class="hljs-number">4</span>).clamp(<span class="hljs-number">0</span>, <span class="hljs-number">40</span>) / <span class="hljs-number">100.0</span>
+    <span class="hljs-keyword">else</span>
+      <span class="hljs-number">0</span>.<span class="hljs-number">0</span>
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">duration</span></span>
+    <span class="hljs-number">1</span> + (period.end_on - period.start_on).to_i
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">duration_in_minutes</span></span>
+    (period.end_at.to_i - period.start_at.to_i) / <span class="hljs-number">60.0</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">car_price_per_minute</span></span>
+    car_price_per_day / (<span class="hljs-number">24.0</span> * <span class="hljs-number">60.0</span>)
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-20">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-20">&#182;</a>
+              </div>
+              <p>This will lead to different results that combines each other depending on the
+<code>selected_at</code> value.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+price_for_3_days.call(Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">4</span>, <span class="hljs-number">15</span>))  <span class="hljs-comment"># =&gt; 90.0</span>
+price_for_3_days.call(Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">6</span>, <span class="hljs-number">15</span>))  <span class="hljs-comment"># =&gt; 88.2 (2% discount)</span>
+price_for_3_days.call(Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">8</span>, <span class="hljs-number">15</span>))  <span class="hljs-comment"># =&gt; 63.7 (2% discount on 52h)</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-21">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-21">&#182;</a>
+              </div>
+              <hr>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-22">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-22">&#182;</a>
+              </div>
+              <p>At that point, extracting that pricing logic into a separate so-called
+<em>“service object”</em>. Since our <code>Rental</code> class is only doing that, it would only
+move complexity from a file to another.</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-23">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-23">&#182;</a>
+              </div>
+              <p>Instead, we could see the computation of the price as a set of <em>Rules</em>
+applying themselves to a <em>Context</em>. I added a couple of helpers based on the
+assumption the context will respond to <code>#key?</code>, <code>#fetch</code>, and <code>merge</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-keyword">require</span> <span class="hljs-string">"forwardable"</span>
+
+Rule = Struct.new(<span class="hljs-symbol">:context</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>) <span class="hljs-keyword">do</span>
+  extend Forwardable
+
+  def_delegator <span class="hljs-symbol">:</span>@context, <span class="hljs-symbol">:key?</span>, <span class="hljs-symbol">:fetch</span>, <span class="hljs-symbol">:merge!</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply!</span></span>
+    raise NotImplementedError
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-24">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-24">&#182;</a>
+              </div>
+              <hr>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-25">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-25">&#182;</a>
+              </div>
+              <p>We could group all the Rules related to computing the <code>Rental#price</code> into an
+<em>Engine</em>. This <code>RentalPriceEngineEngine</code> would try to apply all the known
+rules. Each rule would update the <code>context</code> if needed.</p>
+<p>We need to decide on what’s required in the context for all rules to perform
+correctly. We did that already and we needed:</p>
+<ul>
+<li>the car’s price per day,</li>
+<li>the time the car was selected by a driver, and</li>
+<li>the period the rental spans on.</li>
+</ul>
+<p>We also need to decide on the keys that will stand as the result.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-class"><span class="hljs-keyword">module</span> <span class="hljs-title">RentalPriceEngine</span></span>
+  RULES = [
+    PricePerMinuteRule,
+    PricePerDayRule,
+    DiscountRule,
+  ].freeze
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">self</span>.<span class="hljs-title">compute</span><span class="hljs-params">(context)</span></span>
+    context.fetch_values(<span class="hljs-symbol">:car_price_per_day</span>, <span class="hljs-symbol">:period</span>, <span class="hljs-symbol">:selected_at</span>) <span class="hljs-keyword">do</span> <span class="hljs-params">|key|</span>
+      raise KeyError, <span class="hljs-string">"Key :<span class="hljs-subst">#{key}</span> is missing from the context"</span>
+    <span class="hljs-keyword">end</span>
+
+    RULES.each <span class="hljs-keyword">do</span> <span class="hljs-params">|rule|</span>
+      rule.new(context).apply!
+    <span class="hljs-keyword">end</span>
+
+    context.fetch(<span class="hljs-symbol">:price</span>)
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-26">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-26">&#182;</a>
+              </div>
+              <p>Now we get <code>Rental#price</code> by using the engine and feeding it the appropriate
+context.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Rental</span></span>
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">price</span></span>
+    RentalPriceEngine.compute(
+      <span class="hljs-symbol">car_price_per_day:</span> car_price_per_day,
+      <span class="hljs-symbol">selected_at:</span> selected_at,
+      <span class="hljs-symbol">period:</span> period,
+    )
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-27">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-27">&#182;</a>
+              </div>
+              <p>The last details are now in the implementation of the rules themselves.</p>
+<p>We have the same pattern for each rule, and we could create custom <code>Rule</code>
+subclasses to centralize the common patterns. For instance, each rule has
+a guard clause then uses <code>#merge!</code> to add or overwrite stuff to <code>context</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">PricePerDayRule</span> &lt; Rule</span>
+  APPLY_STRICTLY_BEFORE = Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">9</span>, <span class="hljs-number">1</span>)
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply!</span></span>
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">unless</span> fetch(<span class="hljs-symbol">:selected_at</span>) &lt; APPLY_STRICTLY_BEFORE
+
+    merge!(<span class="hljs-symbol">price:</span> fetch(<span class="hljs-symbol">:period</span>).duration_in_days * fetch(<span class="hljs-symbol">:car_price_per_day</span>))
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span>
+
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">PricePerMinuteRule</span> &lt; Rule</span>
+  APPLY_AFTER = PricePerDayRule::APPLY_STRICTLY_BEFORE
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply!</span></span>
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">unless</span> fetch(<span class="hljs-symbol">:selected_at</span>) &gt;= APPLY_AFTER
+
+    car_price_per_minute = fetch(<span class="hljs-symbol">:car_price_per_day</span>) / (<span class="hljs-number">24.0</span> * <span class="hljs-number">60.0</span>)
+    merge!(<span class="hljs-symbol">price:</span> fetch(<span class="hljs-symbol">:period</span>).duration_in_minutes * car_price_per_minute)
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span>
+
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">DiscountRule</span> &lt; Rule</span>
+  APPLY_AFTER = Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">6</span>, <span class="hljs-number">1</span>)
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply!</span></span>
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">unless</span> fetch(<span class="hljs-symbol">:selected_at</span>) &gt;= APPLY_AFTER
+
+    discount = (<span class="hljs-number">2</span> * fetch(<span class="hljs-symbol">:period</span>).duration_in_days - <span class="hljs-number">4</span>).clamp(<span class="hljs-number">0</span>, <span class="hljs-number">40</span>)
+    merge!(<span class="hljs-symbol">price:</span> fetch(<span class="hljs-symbol">:price</span>) * (<span class="hljs-number">1</span> - discount / <span class="hljs-number">100.0</span>))
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-28">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-28">&#182;</a>
+              </div>
+              <p>I did migrate the duration in the <code>Period</code> class at that point.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+Period = Struct.new(<span class="hljs-symbol">:start_at</span>, <span class="hljs-symbol">:end_at</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>) <span class="hljs-keyword">do</span>
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">duration_in_days</span></span>
+    <span class="hljs-number">1</span> + (end_at.to_date - start_at.to_date).to_i
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">duration_in_minutes</span></span>
+    (end_at.to_i - start_at.to_i) / <span class="hljs-number">60.0</span>
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-29">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-29">&#182;</a>
+              </div>
+              <p>This approach has its flaws. <code>PricePerDayRule</code> and <code>PricePerMinuteRule</code> aren’t
+exactly independent from each other. They serve the same purpose: to add
+<code>:price</code> to the context. And, <code>DiscountRule</code> assume a <code>:price</code> will be in the
+context at the time it is applied, which make the <code>RentalPriceEngine::RULES</code>
+order-sensitive.</p>
+<p>All those assumptions aren’t great but could be addressed, I guess.</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-30">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-30">&#182;</a>
+              </div>
+              <hr>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-31">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-31">&#182;</a>
+              </div>
+              <p>The idea behind this gem would be to provide simple tools to build <em>engines</em>
+like this and provide a good excuse to collect use-cases from outside.</p>
+
+            </div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>
