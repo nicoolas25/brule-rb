@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>promo_code.rb</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="../docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>promo_code.rb</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              <p>To describe the loic behind coupon codes, Sunny shared a way of serializing
+logic into a Javascript objects. Here is a <code>Hash</code> version of something close.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+coupon_config_hash = {
+  <span class="hljs-symbol">conditions:</span> [
+    {
+      <span class="hljs-symbol">operator:</span> <span class="hljs-symbol">:gte</span>,
+      <span class="hljs-symbol">operands:</span> [<span class="hljs-symbol">:order_amount</span>, <span class="hljs-number">42</span>],
+    },
+    {
+      <span class="hljs-symbol">operator:</span> <span class="hljs-symbol">:lte</span>,
+      <span class="hljs-symbol">operands:</span> [<span class="hljs-symbol">:past_usages_count</span>, <span class="hljs-number">99</span>],
+    },
+  ],
+  <span class="hljs-symbol">effects:</span> [
+    {
+      <span class="hljs-symbol">type:</span> <span class="hljs-symbol">:percentage</span>,
+      <span class="hljs-symbol">value:</span> -<span class="hljs-number">10</span>,
+    }
+  ],
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <p>The idea is to have a set of <code>conditions</code> to match and if they are all a match
+then a set of <code>effects</code> to apply. This serialized representation of the logic
+can be stored in the database in a <code>json</code> field for instance.</p>
+<p>This is very flexible, each coupon can have an unique set of conditions and
+effects.</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <hr>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p>On the other hand, if all the coupon end up being the same, maybe a couple of
+fields could represent it. It is small enough that we can even put the logic
+right now.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+CouponConfig = Struct.new(<span class="hljs-symbol">:minimum_amount</span>, <span class="hljs-symbol">:maximum_usage</span>, <span class="hljs-symbol">:percent_discount</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>) <span class="hljs-keyword">do</span>
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply?</span><span class="hljs-params">(<span class="hljs-symbol">order_amount:</span>, <span class="hljs-symbol">past_usages_count:</span>)</span></span>
+    minimum_amount &lt;= order_amount &amp;&amp; past_usages_count &lt; maximum_usage
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">discount</span><span class="hljs-params">(<span class="hljs-symbol">order_amount:</span>)</span></span>
+    order_amount * percent_discount / <span class="hljs-number">100.0</span>
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span>
+
+coupon_config = CouponConfig.new(
+  <span class="hljs-symbol">minimum_amount:</span> <span class="hljs-number">42</span>,
+  <span class="hljs-symbol">maximum_usage:</span> <span class="hljs-number">100</span>,
+  <span class="hljs-symbol">percent_discount:</span> -<span class="hljs-number">10</span>,
+)
+
+coupon_config.apply?(<span class="hljs-symbol">order_amount:</span> <span class="hljs-number">32</span>, <span class="hljs-symbol">past_usages_count:</span> <span class="hljs-number">99</span>)   <span class="hljs-comment"># =&gt; false</span>
+coupon_config.apply?(<span class="hljs-symbol">order_amount:</span> <span class="hljs-number">42</span>, <span class="hljs-symbol">past_usages_count:</span> <span class="hljs-number">99</span>)   <span class="hljs-comment"># =&gt; true</span>
+coupon_config.apply?(<span class="hljs-symbol">order_amount:</span> <span class="hljs-number">42</span>, <span class="hljs-symbol">past_usages_count:</span> <span class="hljs-number">100</span>)  <span class="hljs-comment"># =&gt; false</span>
+
+coupon_config.discount(<span class="hljs-symbol">order_amount:</span> <span class="hljs-number">100</span>)  <span class="hljs-comment"># =&gt; -10</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <hr>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p>Going back to our <code>Hash</code> representation, we can achieve the same logic as in
+<code>CouponConfig</code> this way:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+CouponConfig = Struct.new(<span class="hljs-symbol">:conditions</span>, <span class="hljs-symbol">:effects</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>) <span class="hljs-keyword">do</span>
+  CONDITION_OPERATIONS = {
+    <span class="hljs-symbol">:gte</span> =&gt; -&gt;(operand1, operand2) { operand1 &gt;= operand2 },
+    <span class="hljs-symbol">:lte</span> =&gt; -&gt;(operand1, operand2) { operand1 &lt;= operand2 },
+  }
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply?</span><span class="hljs-params">(**context)</span></span>
+    conditions.all? <span class="hljs-keyword">do</span> <span class="hljs-params">|condition|</span>
+      operator = condition.fetch(<span class="hljs-symbol">:operator</span>)
+      operands = condition.fetch(<span class="hljs-symbol">:operands</span>).map { <span class="hljs-params">|op|</span> context.fetch(op, op) }
+      CONDITION_OPERATIONS.fetch(operator).call(*operands)
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  DISCOUNT_EFFECTS = {
+    <span class="hljs-symbol">percentage:</span> -&gt;(amount, value) { amount * (value / <span class="hljs-number">100.0</span>) }
+  }
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">discount</span><span class="hljs-params">(<span class="hljs-symbol">order_amount:</span>)</span></span>
+    effects.sum(<span class="hljs-number">0</span>) <span class="hljs-keyword">do</span> <span class="hljs-params">|effect|</span>
+      type, value = effect.fetch_values(<span class="hljs-symbol">:type</span>, <span class="hljs-symbol">:value</span>)
+      DISCOUNT_EFFECTS.fetch(type).call(order_amount, value)
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span>
+
+coupon_config = CouponConfig.new(**coupon_config_hash)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>It isn’t <em>that</em> bad but the flexibility definitely has a price here. Extra
+constants, loops that aren’t used, obscure naming, and so on. The cognitive
+load of the engine is not that big.</p>
+
+            </div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>
