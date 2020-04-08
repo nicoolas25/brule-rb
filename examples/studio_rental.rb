@@ -159,3 +159,148 @@ class Period
     other.end_at > start_at && other.start_at < end_at
   end
 end
+
+# ---
+#
+# Imagine we're starting from an existing from this specification. But, later
+# on, we wish to add another constraint. We will have the choice to make `Plan`
+# to take one more field and to not use that field for older plans. That may be
+# what already happened with `scope`. If `scope` is empty, then the constraint
+# doesn't apply.
+#
+# Instead of considering all our constraints at once. We can organize them in a
+# more structured way. That will have the advantage of splitting the
+# `#can_use_plan?` method and be easily extensible in the future.
+
+# A plan becomes a set of constraints.
+
+Plan = Struct.new(:constraints, keyword_init: true)
+
+# And, the `can_use_plan?` reflects that.
+
+class Reservation
+  def can_use_plan?(plan:, history:)
+    context = { reservation: self, history: history }
+    plan.constraints.all? do |constraint|
+      constraint.satisfied?(context: context)
+    end
+  end
+end
+
+# The missing piece are obviously the constraints part. From the implementation
+# of `#can_use_plan?`, we can guess that the `Plan#constraints` holds a list of
+# objects responding to `#satisfied?`.
+
+# Initializing the plan is now a bit different. The rule has been promoted as an
+# explicit concept here, it isn't an internal of the `#can_use_plan?` anymore.
+
+frequency = Frequency.new(
+  amount_of_hours: 4,
+  periodicity: :weekly,
+)
+
+Plan.new(constraints: [
+  FrequencyRule.new(
+    frequency: frequency,
+  ),
+  DayOfWeekRule.new(
+    allowed_days: %i[sun sat],
+  ),
+  HourOfDayRule.new(
+    allowed_hours: [0, 1, 2, 3, 4, 18, 19, 20, 21, 22, 23],
+  ),
+  ConsecutiveSpreadingRule.new(
+    frequency: frequency,
+  ),
+  LocationRule.new(
+    scope: :type,
+    reference: "small",
+  ),
+])
+
+# And the next bit would be to write those rules. Having one class per rule
+# gives a new space to put the logic that would only be related to a rule in
+# particular.
+
+DayOfWeekRule = Struct.new(:allowed_days, keyword_init: true) do
+  def satisfied?(context:)
+    reservation_period = context.fetch(:reservation).period
+    allowed_days.include?(reservation_period.start_day)
+  end
+end
+
+HourOfDayRule = Struct.new(:allowed_hours, keyword_init: true) do
+  def satisfied?(context:)
+    reservation_period = context.fetch(:reservation).period
+    covered_hours(reservation_period).all? do |hour|
+      allowed_hours.include?(hour)
+    end
+  end
+
+  private
+
+  def covered_hours(period)
+    start_ts = period.start_at.to_i
+    end_ts = period.end_at.to_i
+    hour_step = 3600
+    start_ts.step(end_ts, hour_step).map { |ts| Time.at(ts).utc.hour }
+  end
+end
+
+LocationRule = Struct.new(:scope, :reference, keyword_init: true) do
+  def satisfied?(context:)
+    reservation_studio = context.fetch(:reservation).studio
+    reservation_studio[scope] == reference
+  end
+end
+
+FrequencyRule = Struct.new(:frequency, keyword_init: true) do
+  def satisfied?(context:)
+    history = context.fetch(:history)
+    period = context.fetch(:reservation).period
+    recent_hours = recent_hours(prior_to: period, history: history)
+    (recent_hours + period.duration_in_hours) <= frequency.amount_of_hours
+  end
+
+  private
+
+  def recent_hours(prior_to:, history:)
+    recent_period = frequency.period_before(prior_to.start_at)
+    history
+      .select { |reservation| reservation.overlap?(recent_period) }
+      .sum(0) { |reservation| reservation.duration_in_hours }
+  end
+end
+
+ConsecutiveSpreadingRule = Struct.new(:frequency, keyword_init: true) do
+  def satisfied?(context:)
+    history = context.fetch(:history)
+    period = context.fetch(:reservation).period
+    recent_hours(prior_to: period, history: history).zero?
+  end
+
+  private
+
+  def recent_hours(prior_to:, history:)
+    recent_period = frequency.period_before(prior_to.start_at)
+    history
+      .select { |reservation| reservation.overlap?(recent_period) }
+      .sum(0) { |reservation| reservation.duration_in_hours }
+  end
+end
+
+# We don't need `Location` anymore. We introduced it to delegate some work to
+# them. Those abstraction could be useful but could create a false sense of
+# abstraction and attract other usages. The more usages there is, the harder it
+# will be to update it. The definition of one method could sightly differ from
+# one user to another, forcing us to introduce close and confusing naming or
+# complex parameters to change the meaning of a method. All that, depending on
+# the context.
+
+# In the example, even `#covered_hours` was taken out of the `Period` class as
+# its behavior is a bit too specific to our `HourOfDayRule`. Same for the
+# `Studio#match?` method.
+
+# Sadly we already have a bit of duplication around `#recent_hours`. Having this
+# shared between rules wouldn't be a problem. A mixin could do that, but you
+# would have to do that explicitly.
