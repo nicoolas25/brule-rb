@@ -12,7 +12,15 @@
 # A `Plan` holds the constraints details but before going there, we need to
 # represent the various values being part of the constraints.
 
-DAYS = %i[sun mon tue wed thu fri sat]
+DAYS = [
+  SUN = 0b0000001,
+  MON = 0b0000010,
+  TUE = 0b0000100,
+  WED = 0b0001000,
+  THU = 0b0010000,
+  FRI = 0b0100000,
+  SAT = 0b1000000,
+]
 
 DAY_HOURS = (0..23).to_a
 
@@ -41,7 +49,7 @@ Plan = Struct.new(:days, :hours, :frequency, :spreading, :scope, keyword_init: t
 # Instanciating a `Plan` could look like this:
 
 Plan.new(
-  days: %i[sun sat],                              # Week-ends only
+  days: SUN | SAT,                                # Week-ends only
   hours: [0, 1, 2, 3, 4, 18, 19, 20, 21, 22, 23], # Evenings only
   frequency: Frequency.new(                       # 4-hours per week
     amount_of_hours: 4,
@@ -75,7 +83,7 @@ end
 
 class Reservation
   def can_use_plan?(plan:, history:)
-    if !days.include?(period.start_day)
+    if (days & period.start_day) == 0
       return false # Must be in the allowed days
     end
 
@@ -204,7 +212,7 @@ Plan.new(constraints: [
     frequency: frequency,
   ),
   DayOfWeekRule.new(
-    allowed_days: %i[sun sat],
+    allowed_days: SUN | SAT,
   ),
   HourOfDayRule.new(
     allowed_hours: [0, 1, 2, 3, 4, 18, 19, 20, 21, 22, 23],
@@ -225,7 +233,7 @@ Plan.new(constraints: [
 DayOfWeekRule = Struct.new(:allowed_days, keyword_init: true) do
   def satisfied?(context:)
     reservation_period = context.fetch(:reservation).period
-    allowed_days.include?(reservation_period.start_day)
+    (allowed_days & reservation_period.start_day) > 0
   end
 end
 
@@ -304,3 +312,36 @@ end
 # Sadly we already have a bit of duplication around `#recent_hours`. Having this
 # shared between rules wouldn't be a problem. A mixin could do that, but you
 # would have to do that explicitly.
+
+# ---
+#
+# From this representation of the plans, we could persist a given plan in a
+# serialized way. Having a schema-less representation for constraints is a bit
+# scary but opens things up on the versioning side...
+
+# The Plan's serialization will hold references to classes, such as
+# `DayOfWeekRule`. It means that it is possible to version not only the
+# `allowed_days` but also the class that will manipulate it. We can have
+# `DayOfWeekRule::V1` and `DayOfWeekRule::V2` or we can make `DayOfWeekRule`
+# support more arguments...
+
+require "sequel"
+
+DB = Sequel.sqlite
+
+DB.create_table :plans do
+  primary_key :id, type: "integer"
+  column :constraints, "text", null: false
+end
+
+class Persitence::Plan
+  def insert(plan)
+    DB[:plans].insert(constraints: Marshal.dump(plan.constraints))
+  end
+
+  def retrieve(plan_id)
+    plan_record = DB[:plans].first(id: plan_id)
+    constraints = Marshal.load(plan_record.fetch(:constraints))
+    Plan.new(constraints: constraints)
+  end
+end
