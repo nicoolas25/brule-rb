@@ -345,3 +345,12 @@ class Persitence::Plan
     Plan.new(constraints: constraints)
   end
 end
+
+# Using `Marshal` here is a dangerous choice:
+# * it make querying the details of a `Plan` difficult,
+# * it forces the _rules_ to be marshal-able (which isn't that bad), and
+# * it could have security implications.
+#
+# I did it for showing an example of persistence but other approaches could
+# be better. On the top of my head, I'm thinking about a more explicit
+# serialization of the rules and their configurations.

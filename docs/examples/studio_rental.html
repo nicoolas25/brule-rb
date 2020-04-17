@@ -627,6 +627,27 @@ DB.create_table <span class="hljs-symbol">:plans</span> <span class="hljs-keywor
             
         </li>
         
+        
+        <li id="section-23">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-23">&#182;</a>
+              </div>
+              <p>Using <code>Marshal</code> here is a dangerous choice:</p>
+<ul>
+<li>it make querying the details of a <code>Plan</code> difficult,</li>
+<li>it forces the <em>rules</em> to be marshal-able (which isn’t that bad), and</li>
+<li>it could have security implications.</li>
+</ul>
+<p>I did it for showing an example of persistence but other approaches could
+be better. On the top of my head, I’m thinking about a more explicit
+serialization of the rules and their configurations.</p>
+
+            </div>
+            
+        </li>
+        
     </ul>
   </div>
 </body>
