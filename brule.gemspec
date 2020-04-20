@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
     lib/brule/rule.rb
     README.md
   ]
-  s.homepage    = 'https://rubygems.org/gems/brule'
+  s.homepage    = 'https://github.com/nicoolas25/brule-rb'
   s.license     = 'MIT'
 
   s.add_development_dependency 'minitest', '~> 5.14'
