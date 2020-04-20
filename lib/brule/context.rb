@@ -14,13 +14,11 @@ module Brule
       @content = hash
     end
 
-    def [](key)
-      @content.fetch(key)
-    end
-
     def initialize_copy(orig)
       super
       @content = orig.instance_variable_get(:@content).dup
     end
+
+    alias [] fetch
   end
 end

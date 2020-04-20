@@ -42,7 +42,7 @@ require "brule"
 
 module Pricing
   class Engine < Brule::Engine
-    def result_value
+    def result
       context[:price]
     end
   end
@@ -124,12 +124,22 @@ result = engine.call(
   state: "NV",
 )
 
-result.value                  # => 9_720_00 ($9,720.00)
-result.context.fetch_values(
+# Access the main result
+result                        # => 9_720_00 ($9,720.00)
+
+# Access the context
+engine.context.fetch_values(
   :discount_rate,             # =>      0.1 (10%)
   :discount_amount,           # => 1_000_00 ($1,000.00)
   :state_tax,                 # =>   720_00 ($720.00)
 )
+
+# Access the history
+engine.history(key: :price)   # => [
+                              # =>   [#<struct Pricing::OrderTotal ...>, 10_000_00],
+                              # =>   [#<struct Pricing::Discount ...>,    9_000_00],
+                              # =>   [#<struct Pricing::StateTax ...>,    9_720_00],
+                              # => ]
 ```
 
 [elephant]: https://docs.google.com/document/d/1Ls6pTmhY_LV8LwFiboUXoFXenXZl0qVZWPZ8J4uoqpI/edit#

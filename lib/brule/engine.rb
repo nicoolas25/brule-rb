@@ -7,15 +7,31 @@ module Brule
     end
 
     def call(context = {})
-      Result.new.tap do |result|
-        @context = Context.wrap(context)
-        @rules.each do |rule|
-          rule.context = @context
-          rule.apply if rule.trigger?
-        end
-        result.context = @context
-        result.value = result_value
-      end
+      @history = {}
+      @context = Context.wrap(context)
+      snapshot!(tag: :initial)
+      @rules.each { |rule| apply(rule) }
+      result
+    end
+
+    def history(key:)
+      return [] unless defined?(@history)
+
+      @history.map { |tag, content| [tag, content.fetch(key, nil)] }
+    end
+
+    private
+
+    def snapshot!(tag:)
+      @history[tag] = @context.dup
+    end
+
+    def apply(rule)
+      rule.context = @context
+      return unless rule.trigger?
+
+      rule.apply
+      snapshot!(tag: rule)
     end
   end
 end

@@ -4,7 +4,7 @@ require 'test_helper'
 
 class EngineTest < Minitest::Test
   Engine = Class.new(Brule::Engine) do
-    def result_value
+    def result
       context.key?(:result) ? context[:result] : 42
     end
   end
@@ -15,7 +15,7 @@ class EngineTest < Minitest::Test
 
   def test_calling_the_engine_produces_a_result
     engine = Engine.new(rules: [])
-    assert_kind_of Brule::Result, engine.call
+    assert_equal 42, engine.call
   end
 
   def test_calling_the_engine_can_provide_a_context
@@ -23,13 +23,15 @@ class EngineTest < Minitest::Test
     context = Brule::Context.wrap(result: context_result)
     engine = Engine.new(rules: [])
     result = engine.call(context)
-    assert_same context_result, result.value
+    assert_same context_result, result
   end
 
-  def test_engine_resuslt_embbeds_context
+  def test_engine_exposes_its_context
     engine = Engine.new(rules: [])
-    result = engine.call(a: 42)
-    assert_same 42, result.context[:a]
+    value = Object.new
+    engine.call(key: value)
+    assert_kind_of Brule::Context, engine.context
+    assert_same value, engine.context[:key]
   end
 
   ValueToResultRule = Class.new(Brule::Rule) do
@@ -49,7 +51,7 @@ class EngineTest < Minitest::Test
         ValueToResultRule.new(value: 20),
       ],
     )
-    assert_equal 20, engine.call.value
+    assert_equal 20, engine.call
   end
 
   def test_calling_the_engine_skip_rules_that_does_not_trigger
@@ -59,6 +61,19 @@ class EngineTest < Minitest::Test
         ValueToResultRule.new(value: 20, skip: true),
       ],
     )
-    assert_equal 10, engine.call.value
+    assert_equal 10, engine.call
+  end
+
+  def test_engine_traces_history_of_context_entries
+    engine = Engine.new(
+      rules: [
+        r1 = ValueToResultRule.new(value: 10),
+        ValueToResultRule.new(value: 20, skip: true),
+        r3 = ValueToResultRule.new(value: 30),
+      ],
+    )
+    assert_equal 30, engine.call
+    assert_equal [[:initial, nil], [r1, 10], [r3, 30]],
+                 engine.history(key: :result)
   end
 end
