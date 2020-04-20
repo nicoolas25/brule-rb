@@ -136,6 +136,7 @@ engine.context.fetch_values(
 
 # Access the history
 engine.history(key: :price)   # => [
+                              # =>   [:initial,                                nil],
                               # =>   [#<struct Pricing::OrderTotal ...>, 10_000_00],
                               # =>   [#<struct Pricing::Discount ...>,    9_000_00],
                               # =>   [#<struct Pricing::StateTax ...>,    9_720_00],
