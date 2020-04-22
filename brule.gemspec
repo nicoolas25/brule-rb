@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name        = 'brule'
-  s.version     = '0.2.1'
+  s.version     = '0.3.0'
   s.date        = '2020-05-01'
   s.summary     = 'Split and orchestrate complex business rules'
   s.authors     = ['Nicolas Zermati']

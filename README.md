@@ -50,7 +50,7 @@ module Pricing
   end
 
   class OrderTotal < Brule::Rule
-    config_reader :unit_price, :item_count
+    context_reader :unit_price, :item_count
     context_writer :price
 
     def apply
