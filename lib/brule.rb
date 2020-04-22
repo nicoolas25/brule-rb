@@ -3,7 +3,34 @@
 require 'forwardable'
 
 module Brule
+  module RuleHelpers
+    def context_reader(*symbols)
+      symbols.each do |symbol|
+        define_method(symbol) { context.fetch(symbol) }
+      end
+    end
+
+    def context_writer(*symbols)
+      symbols.each do |symbol|
+        define_method("#{symbol}=") { |value| context[symbol] = value }
+      end
+    end
+
+    def context_accessor(*symbols)
+      context_reader(*symbols)
+      context_writer(*symbols)
+    end
+
+    def config_reader(*symbols)
+      symbols.each do |symbol|
+        define_method(symbol) { config.fetch(symbol) }
+      end
+    end
+  end
+
   Rule = Struct.new(:config) do
+    extend RuleHelpers
+
     attr_accessor :context
 
     def trigger?

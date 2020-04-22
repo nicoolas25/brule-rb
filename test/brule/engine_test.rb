@@ -35,12 +35,15 @@ class EngineTest < Minitest::Test
   end
 
   ValueToResultRule = Class.new(Brule::Rule) do
+    config_reader :value
+    context_writer :result
+
     def trigger?
       !config.key?(:skip)
     end
 
     def apply
-      context[:result] = config[:value]
+      self.result = value
     end
   end
 

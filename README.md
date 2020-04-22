@@ -50,46 +50,46 @@ module Pricing
   end
 
   class OrderTotal < Brule::Rule
+    config_reader :unit_price, :item_count
+    context_writer :price
+
     def apply
-      unit_price, item_count = context.fetch_values(:unit_price, :item_count)
-      context[:price] = unit_price * item_count
+      self.price = unit_price * item_count
     end
   end
 
   class Discount < Brule::Rule
+    config_reader :rates
+    context_accessor :price, :discount_rate, :discount_amount
+
     def trigger?
       !applicable_discount.nil?
     end
 
     def apply
-      order_value, discount_rate = applicable_discount
-      price = context.fetch(:price)
-      discount_amount = (price * discount_rate).ceil
-      context.merge!(
-        price: price - discount_amount,
-        discount_rate: discount_rate,
-        discount_amount: discount_amount,
-      )
+      self.discount_rate = applicable_discount.last
+      self.discount_amount = (price * discount_rate).ceil
+      self.price = price - discount_amount
     end
 
     private
 
     def applicable_discount
-      config.fetch(:rates)
+      rates
         .sort_by { |order_value, _| order_value * -1 }
         .find    { |order_value, _| order_value <= context.fetch(:price) }
     end
   end
 
   class StateTax < Brule::Rule
+    config_reader :rates
+    context_reader :state
+    context_accessor :price, :state_tax
+
     def apply
-      price, state = context.fetch_values(:price, :state)
-      tax_rate = config.fetch(:rates).fetch(state)
-      state_tax = (price * tax_rate).ceil
-      context.merge!(
-        price: price + state_tax,
-        state_tax: state_tax,
-      )
+      tax_rate = rates.fetch(state)
+      self.state_tax = (price * tax_rate).ceil
+      self.price = price + state_tax
     end
   end
 end
