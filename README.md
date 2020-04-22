@@ -22,7 +22,9 @@ information for the engine to assemble a _result_. The rules are arranged in an
 ordered sequence and are picked depending on the _context_. Each rule will write
 in the context too.
 
-The idea is very similar to function composition or Rack's middlewares.
+The idea is very similar to function composition or Rack's middlewares. It is a
+layering abstraction where each layer works for the next layers in order for the
+stack to produce a single value.
 
 ## How does it look
 
@@ -43,13 +45,14 @@ require "brule"
 module Pricing
   class Engine < Brule::Engine
     def result
-      context[:price]
+      context.fetch(:price)
     end
   end
 
   class OrderTotal < Brule::Rule
     def apply
-      context[:price] = context[:unit_price] * context[:item_count]
+      unit_price, item_count = context.fetch_values(:unit_price, :item_count)
+      context[:price] = unit_price * item_count
     end
   end
 
@@ -60,7 +63,7 @@ module Pricing
 
     def apply
       order_value, discount_rate = applicable_discount
-      price = context[:price]
+      price = context.fetch(:price)
       discount_amount = (price * discount_rate).ceil
       context.merge!(
         price: price - discount_amount,
@@ -72,16 +75,16 @@ module Pricing
     private
 
     def applicable_discount
-      config[:rates]
+      config.fetch(:rates)
         .sort_by { |order_value, _| order_value * -1 }
-        .find    { |order_value, _| order_value <= context[:price] }
+        .find    { |order_value, _| order_value <= context.fetch(:price) }
     end
   end
 
   class StateTax < Brule::Rule
     def apply
       price, state = context.fetch_values(:price, :state)
-      tax_rate = config[:rates].fetch(state)
+      tax_rate = config.fetch(:rates).fetch(state)
       state_tax = (price * tax_rate).ceil
       context.merge!(
         price: price + state_tax,
@@ -143,4 +146,71 @@ engine.history(key: :price)   # => [
                               # => ]
 ```
 
+## What does it bring to the table
+
+If you compare this approach with a simple method like this one:
+
+```ruby
+require "bigdecimal"
+require "bigdecimal/util"
+
+STATE_TAXES = {
+  "UT" => "0.0685".to_d,
+  "NV" => "0.0800".to_d,
+  "TX" => "0.0625".to_d,
+  "AL" => "0.0400".to_d,
+  "CA" => "0.0825".to_d,
+}
+
+DISCOUNT_RATES = [
+  [ 50_000_00, "0.15".to_d ],
+  [ 10_000_00, "0.10".to_d ],
+  [  7_000_00, "0.07".to_d ],
+  [  5_000_00, "0.05".to_d ],
+  [  1_000_00, "0.03".to_d ],
+  [         0, "0.00".to_d ],
+]
+
+def pricing(item_count, unit_price, state)
+  price = item_count * unit_price
+  discount_rate = DISCOUNT_RATES.find { |limit, _| limit <= price }.last
+  state_tax = STATE_TAXES.fetch(state)
+  price * (1 - discount_rate) * (1 + state_tax)
+end
+```
+
+... then you'll find significant differences:
+
+* Over-abstraction versus under-abstraction
+  * 1st example uses the layering abstraction provided by the gem
+  * 2nd example uses nothing, [YAGNI][yagni]
+* Generalization vs specialization
+  * 1st approach is more generic and could handle changes
+  * 2nd approach is more specialized and would require a rewrite
+* Complexity versus brievety
+  * 1st example is more verbose and thus is harder to grasp
+  * 2nd example is more concise and fits in the head
+* Configuration versus constants
+  * 1st example relies on rule's configuration
+  * 2nd example relies on `STATE_TAXES` and `DISCOUNT_RATES`
+* Observability vs black-box
+  * 1st example allows to provide more information (`state_tax` and so on)
+  * 2nd example only gives a single result
+* Data-independent versus hard-coded values
+  * 1st example considers as much logic as possible as data
+  * 2nd example mixes data and logic together (with hidden dependencies and assumptions)
+* Temporal extensibility or versionning
+  * 1st example can compute the price using different rules
+    * Without discounts or with different discount rate per client
+    * With tax rates from on year or another
+  * 2nd example will have to introduce options, or even different methods
+* Testability
+  * 1st example could be tested at various levels without any mocks
+  * 2nd example have to mock hidden dependencies from the implementation
+
+Overall, it is about finding the right level of abtsraction. This tiny framework
+helps you by providing you a little abstraction. Even if you're not using this
+gem directly, it can give you some ideas behind it.
+
 [elephant]: https://docs.google.com/document/d/1Ls6pTmhY_LV8LwFiboUXoFXenXZl0qVZWPZ8J4uoqpI/edit#
+[yagni]: https://en.wikipedia.org/wiki/You_aren%27t_gonna_need_it

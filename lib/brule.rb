@@ -3,10 +3,22 @@
 require 'forwardable'
 
 module Brule
+  Rule = Struct.new(:config) do
+    attr_accessor :context
+
+    def trigger?
+      true
+    end
+
+    def apply
+      raise NotImplementedError
+    end
+  end
+
   class Context
     extend Forwardable
 
-    def_delegators :@content, :fetch, :fetch_values, :key?, :[]=, :merge!
+    def_delegators :@content, :[], :fetch, :fetch_values, :key?, :[]=, :merge!
 
     def self.wrap(context)
       context.is_a?(self) ? context : new(context)
@@ -20,20 +32,6 @@ module Brule
       super
       @content = orig.instance_variable_get(:@content).dup
     end
-
-    alias [] fetch
-  end
-
-  Rule = Struct.new(:config) do
-    attr_accessor :context
-
-    def trigger?
-      true
-    end
-
-    def apply
-      raise NotImplementedError
-    end
   end
 
   class Engine
@@ -41,6 +39,7 @@ module Brule
 
     def initialize(rules:)
       @rules = rules
+      @history = {}
     end
 
     def call(context = {})
@@ -52,8 +51,6 @@ module Brule
     end
 
     def history(key:)
-      return [] unless defined?(@history)
-
       @history.map { |tag, content| [tag, content.fetch(key, nil)] }
     end
 
