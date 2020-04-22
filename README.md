@@ -1,11 +1,11 @@
-This project aims at providing a set of tools to build somehow complex
-business processes or rules. It helps when:
+This project aims at providing a set of tools to build complex and evolving
+business rules. It helps when:
 
-* You decided to split the process into smaller parts working together.
-* You need to keep the rules evolving while maintaining the old versions.
-* You want to persist the rules that lead to the result of a process.
+* You decided to split the computation into smaller parts working together.
+* You need to keep old versions of the rules working.
+* You want to persist the rules leading to a result.
 * You want to make your tests independent from your production data.
-* You want to introspect what lead to the result of a process.
+* You want to introspect the computation of a result.
 
 ## How does it work
 
