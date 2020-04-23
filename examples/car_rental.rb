@@ -222,28 +222,10 @@ price_for_3_days.call(Time.utc(2020, 8, 15))  # => 63.7 (2% discount on 52h)
 # _"service object"_. Since our `Rental` class is only doing that, it would only
 # move complexity from a file to another.
 
-# Instead, we could see the computation of the price as a set of _Rules_
-# applying themselves to a _Context_. I added a couple of helpers based on the
-# assumption the context will respond to `#key?`, `#fetch`, and `merge`.
+# Instead, we could use a layering abstraction and the `brule` gem.
 
-require "forwardable"
+require "brule"
 
-Rule = Struct.new(:context, keyword_init: true) do
-  extend Forwardable
-
-  def_delegator :@context, :key?, :fetch, :merge!
-
-  def apply!
-    raise NotImplementedError
-  end
-end
-
-# ---
-#
-# We could group all the Rules related to computing the `Rental#price` into an
-# _Engine_. This `RentalPriceEngineEngine` would try to apply all the known
-# rules. Each rule would update the `context` if needed.
-#
 # We need to decide on what's required in the context for all rules to perform
 # correctly. We did that already and we needed:
 # * the car's price per day,
@@ -252,32 +234,19 @@ end
 #
 # We also need to decide on the keys that will stand as the result.
 
-module RentalPriceEngine
-  RULES = [
-    PricePerMinuteRule,
-    PricePerDayRule,
-    DiscountRule,
-  ].freeze
-
-  def self.compute(context)
-    context.fetch_values(:car_price_per_day, :period, :selected_at) do |key|
-      raise KeyError, "Key :#{key} is missing from the context"
-    end
-
-    RULES.each do |rule|
-      rule.new(context).apply!
-    end
-
-    context.fetch(:price)
-  end
-end
-
 # Now we get `Rental#price` by using the engine and feeding it the appropriate
 # context.
 
 class Rental
   def price
-    RentalPriceEngine.compute(
+    engine = RentalPrice::Engine.new(
+      rules: [
+        RentalPrice::PricePerMinute.new,
+        RentalPrice::PricePerDay.new,
+        RentalPrice::Discount.new,
+      ],
+    )
+    engine.call(
       car_price_per_day: car_price_per_day,
       selected_at: selected_at,
       period: period,
@@ -285,41 +254,64 @@ class Rental
   end
 end
 
-# The last details are now in the implementation of the rules themselves.
-#
-# We have the same pattern for each rule, and we could create custom `Rule`
-# subclasses to centralize the common patterns. For instance, each rule has
-# a guard clause then uses `#merge!` to add or overwrite stuff to `context`.
-
-class PricePerDayRule < Rule
-  APPLY_STRICTLY_BEFORE = Time.utc(2020, 9, 1)
-
-  def apply!
-    return unless fetch(:selected_at) < APPLY_STRICTLY_BEFORE
-
-    merge!(price: fetch(:period).duration_in_days * fetch(:car_price_per_day))
+module RentalPrice
+  class Engine < Brule::Engine
+    def result
+      context.fetch(:price)
+    end
   end
-end
 
-class PricePerMinuteRule < Rule
-  APPLY_AFTER = PricePerDayRule::APPLY_STRICTLY_BEFORE
+  # The last details are now in the implementation of the rules themselves.
+  #
+  # We have the same pattern for each rule, and we could create custom `Rule`
+  # subclasses to centralize the common patterns. For instance, each rule has
+  # a guard clause then uses `#merge!` to add or overwrite stuff to `context`.
 
-  def apply!
-    return unless fetch(:selected_at) >= APPLY_AFTER
+  class PricePerDay < Brule::Rule
+    APPLY_STRICTLY_BEFORE = Time.utc(2020, 9, 1)
 
-    car_price_per_minute = fetch(:car_price_per_day) / (24.0 * 60.0)
-    merge!(price: fetch(:period).duration_in_minutes * car_price_per_minute)
+    context_reader :selected_at, :period, :car_price_per_day
+    context_writer :price
+
+    def trigger?
+      selected_at < APPLY_STRICTLY_BEFORE
+    end
+
+    def apply
+      self.price = period.duration_in_days * car_price_per_day
+    end
   end
-end
 
-class DiscountRule < Rule
-  APPLY_AFTER = Time.utc(2020, 6, 1)
+  class PricePerMinute < Brule::Rule
+    APPLY_AFTER = PricePerDayRule::APPLY_STRICTLY_BEFORE
 
-  def apply!
-    return unless fetch(:selected_at) >= APPLY_AFTER
+    context_reader :selected_at, :period, :car_price_per_day
+    context_writer :price
 
-    discount = (2 * fetch(:period).duration_in_days - 4).clamp(0, 40)
-    merge!(price: fetch(:price) * (1 - discount / 100.0))
+    def trigger?
+      selected_at >= APPLY_AFTER
+    end
+
+    def apply
+      car_price_per_minute = car_price_per_day / (24.0 * 60.0)
+      self.price = period.duration_in_minutes * car_price_per_minute
+    end
+  end
+
+  class Discount < Brule::Rule
+    APPLY_AFTER = Time.utc(2020, 6, 1)
+
+    context_reader :period
+    context_accessor :price, :discount
+
+    def trigger?
+      selected_at >= APPLY_AFTER
+    end
+
+    def apply
+      self.discount = (2 * period.duration_in_days - 4).clamp(0, 40) / 100.0
+      self.price = price * (1 - discount)
+    end
   end
 end
 
@@ -335,10 +327,10 @@ Period = Struct.new(:start_at, :end_at, keyword_init: true) do
   end
 end
 
-# This approach has its flaws. `PricePerDayRule` and `PricePerMinuteRule` aren't
+# This approach has its flaws. `PricePerDay` and `PricePerMinute` aren't
 # exactly independent from each other. They serve the same purpose: to add
-# `:price` to the context. And, `DiscountRule` assume a `:price` will be in the
-# context at the time it is applied, which make the `RentalPriceEngine::RULES`
+# `:price` to the context. And, `Discount` assume a `:price` will be in the
+# context at the time it is applied, which make the `rules` array
 # order-sensitive.
 #
 # All those assumptions aren't great but could be addressed, I guess.

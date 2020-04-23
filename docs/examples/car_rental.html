@@ -501,24 +501,12 @@ move complexity from a file to another.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-23">&#182;</a>
               </div>
-              <p>Instead, we could see the computation of the price as a set of <em>Rules</em>
-applying themselves to a <em>Context</em>. I added a couple of helpers based on the
-assumption the context will respond to <code>#key?</code>, <code>#fetch</code>, and <code>merge</code>.</p>
+              <p>Instead, we could use a layering abstraction and the <code>brule</code> gem.</p>
 
             </div>
             
             <div class="content"><div class='highlight'><pre>
-<span class="hljs-keyword">require</span> <span class="hljs-string">"forwardable"</span>
-
-Rule = Struct.new(<span class="hljs-symbol">:context</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>) <span class="hljs-keyword">do</span>
-  extend Forwardable
-
-  def_delegator <span class="hljs-symbol">:</span>@context, <span class="hljs-symbol">:key?</span>, <span class="hljs-symbol">:fetch</span>, <span class="hljs-symbol">:merge!</span>
-
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply!</span></span>
-    raise NotImplementedError
-  <span class="hljs-keyword">end</span>
-<span class="hljs-keyword">end</span></pre></div></div>
+<span class="hljs-keyword">require</span> <span class="hljs-string">"brule"</span></pre></div></div>
             
         </li>
         
@@ -529,7 +517,14 @@ Rule = Struct.new(<span class="hljs-symbol">:context</span>, <span class="hljs-s
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-24">&#182;</a>
               </div>
-              <hr>
+              <p>We need to decide on what’s required in the context for all rules to perform
+correctly. We did that already and we needed:</p>
+<ul>
+<li>the car’s price per day,</li>
+<li>the time the car was selected by a driver, and</li>
+<li>the period the rental spans on.</li>
+</ul>
+<p>We also need to decide on the keys that will stand as the result.</p>
 
             </div>
             
@@ -542,40 +537,35 @@ Rule = Struct.new(<span class="hljs-symbol">:context</span>, <span class="hljs-s
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-25">&#182;</a>
               </div>
-              <p>We could group all the Rules related to computing the <code>Rental#price</code> into an
-<em>Engine</em>. This <code>RentalPriceEngineEngine</code> would try to apply all the known
-rules. Each rule would update the <code>context</code> if needed.</p>
-<p>We need to decide on what’s required in the context for all rules to perform
-correctly. We did that already and we needed:</p>
-<ul>
-<li>the car’s price per day,</li>
-<li>the time the car was selected by a driver, and</li>
-<li>the period the rental spans on.</li>
-</ul>
-<p>We also need to decide on the keys that will stand as the result.</p>
+              <p>Now we get <code>Rental#price</code> by using the engine and feeding it the appropriate
+context.</p>
 
             </div>
             
             <div class="content"><div class='highlight'><pre>
-<span class="hljs-class"><span class="hljs-keyword">module</span> <span class="hljs-title">RentalPriceEngine</span></span>
-  RULES = [
-    PricePerMinuteRule,
-    PricePerDayRule,
-    DiscountRule,
-  ].freeze
-
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">self</span>.<span class="hljs-title">compute</span><span class="hljs-params">(context)</span></span>
-    context.fetch_values(<span class="hljs-symbol">:car_price_per_day</span>, <span class="hljs-symbol">:period</span>, <span class="hljs-symbol">:selected_at</span>) <span class="hljs-keyword">do</span> <span class="hljs-params">|key|</span>
-      raise KeyError, <span class="hljs-string">"Key :<span class="hljs-subst">#{key}</span> is missing from the context"</span>
-    <span class="hljs-keyword">end</span>
-
-    RULES.each <span class="hljs-keyword">do</span> <span class="hljs-params">|rule|</span>
-      rule.new(context).apply!
-    <span class="hljs-keyword">end</span>
-
-    context.fetch(<span class="hljs-symbol">:price</span>)
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Rental</span></span>
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">price</span></span>
+    engine = RentalPrice::Engine.new(
+      <span class="hljs-symbol">rules:</span> [
+        RentalPrice::PricePerMinute.new,
+        RentalPrice::PricePerDay.new,
+        RentalPrice::Discount.new,
+      ],
+    )
+    engine.call(
+      <span class="hljs-symbol">car_price_per_day:</span> car_price_per_day,
+      <span class="hljs-symbol">selected_at:</span> selected_at,
+      <span class="hljs-symbol">period:</span> period,
+    )
   <span class="hljs-keyword">end</span>
-<span class="hljs-keyword">end</span></pre></div></div>
+<span class="hljs-keyword">end</span>
+
+<span class="hljs-class"><span class="hljs-keyword">module</span> <span class="hljs-title">RentalPrice</span></span>
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Engine</span> &lt; Brule::Engine</span>
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">result</span></span>
+      context.fetch(<span class="hljs-symbol">:price</span>)
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span></pre></div></div>
             
         </li>
         
@@ -586,19 +576,59 @@ correctly. We did that already and we needed:</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-26">&#182;</a>
               </div>
-              <p>Now we get <code>Rental#price</code> by using the engine and feeding it the appropriate
-context.</p>
+              <p>The last details are now in the implementation of the rules themselves.</p>
+<p>We have the same pattern for each rule, and we could create custom <code>Rule</code>
+subclasses to centralize the common patterns. For instance, each rule has
+a guard clause then uses <code>#merge!</code> to add or overwrite stuff to <code>context</code>.</p>
 
             </div>
             
             <div class="content"><div class='highlight'><pre>
-<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Rental</span></span>
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">price</span></span>
-    RentalPriceEngine.compute(
-      <span class="hljs-symbol">car_price_per_day:</span> car_price_per_day,
-      <span class="hljs-symbol">selected_at:</span> selected_at,
-      <span class="hljs-symbol">period:</span> period,
-    )
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">PricePerDay</span> &lt; Brule::Rule</span>
+    APPLY_STRICTLY_BEFORE = Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">9</span>, <span class="hljs-number">1</span>)
+
+    context_reader <span class="hljs-symbol">:selected_at</span>, <span class="hljs-symbol">:period</span>, <span class="hljs-symbol">:car_price_per_day</span>
+    context_writer <span class="hljs-symbol">:price</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">trigger?</span></span>
+      selected_at &lt; APPLY_STRICTLY_BEFORE
+    <span class="hljs-keyword">end</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply</span></span>
+      <span class="hljs-keyword">self</span>.price = period.duration_in_days * car_price_per_day
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">PricePerMinute</span> &lt; Brule::Rule</span>
+    APPLY_AFTER = PricePerDayRule::APPLY_STRICTLY_BEFORE
+
+    context_reader <span class="hljs-symbol">:selected_at</span>, <span class="hljs-symbol">:period</span>, <span class="hljs-symbol">:car_price_per_day</span>
+    context_writer <span class="hljs-symbol">:price</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">trigger?</span></span>
+      selected_at &gt;= APPLY_AFTER
+    <span class="hljs-keyword">end</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply</span></span>
+      car_price_per_minute = car_price_per_day / (<span class="hljs-number">24.0</span> * <span class="hljs-number">60.0</span>)
+      <span class="hljs-keyword">self</span>.price = period.duration_in_minutes * car_price_per_minute
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Discount</span> &lt; Brule::Rule</span>
+    APPLY_AFTER = Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">6</span>, <span class="hljs-number">1</span>)
+
+    context_reader <span class="hljs-symbol">:period</span>
+    context_accessor <span class="hljs-symbol">:price</span>, <span class="hljs-symbol">:discount</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">trigger?</span></span>
+      selected_at &gt;= APPLY_AFTER
+    <span class="hljs-keyword">end</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply</span></span>
+      <span class="hljs-keyword">self</span>.discount = (<span class="hljs-number">2</span> * period.duration_in_days - <span class="hljs-number">4</span>).clamp(<span class="hljs-number">0</span>, <span class="hljs-number">40</span>) / <span class="hljs-number">100.0</span>
+      <span class="hljs-keyword">self</span>.price = price * (<span class="hljs-number">1</span> - discount)
+    <span class="hljs-keyword">end</span>
   <span class="hljs-keyword">end</span>
 <span class="hljs-keyword">end</span></pre></div></div>
             
@@ -610,55 +640,6 @@ context.</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-27">&#182;</a>
-              </div>
-              <p>The last details are now in the implementation of the rules themselves.</p>
-<p>We have the same pattern for each rule, and we could create custom <code>Rule</code>
-subclasses to centralize the common patterns. For instance, each rule has
-a guard clause then uses <code>#merge!</code> to add or overwrite stuff to <code>context</code>.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>
-<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">PricePerDayRule</span> &lt; Rule</span>
-  APPLY_STRICTLY_BEFORE = Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">9</span>, <span class="hljs-number">1</span>)
-
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply!</span></span>
-    <span class="hljs-keyword">return</span> <span class="hljs-keyword">unless</span> fetch(<span class="hljs-symbol">:selected_at</span>) &lt; APPLY_STRICTLY_BEFORE
-
-    merge!(<span class="hljs-symbol">price:</span> fetch(<span class="hljs-symbol">:period</span>).duration_in_days * fetch(<span class="hljs-symbol">:car_price_per_day</span>))
-  <span class="hljs-keyword">end</span>
-<span class="hljs-keyword">end</span>
-
-<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">PricePerMinuteRule</span> &lt; Rule</span>
-  APPLY_AFTER = PricePerDayRule::APPLY_STRICTLY_BEFORE
-
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply!</span></span>
-    <span class="hljs-keyword">return</span> <span class="hljs-keyword">unless</span> fetch(<span class="hljs-symbol">:selected_at</span>) &gt;= APPLY_AFTER
-
-    car_price_per_minute = fetch(<span class="hljs-symbol">:car_price_per_day</span>) / (<span class="hljs-number">24.0</span> * <span class="hljs-number">60.0</span>)
-    merge!(<span class="hljs-symbol">price:</span> fetch(<span class="hljs-symbol">:period</span>).duration_in_minutes * car_price_per_minute)
-  <span class="hljs-keyword">end</span>
-<span class="hljs-keyword">end</span>
-
-<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">DiscountRule</span> &lt; Rule</span>
-  APPLY_AFTER = Time.utc(<span class="hljs-number">2020</span>, <span class="hljs-number">6</span>, <span class="hljs-number">1</span>)
-
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply!</span></span>
-    <span class="hljs-keyword">return</span> <span class="hljs-keyword">unless</span> fetch(<span class="hljs-symbol">:selected_at</span>) &gt;= APPLY_AFTER
-
-    discount = (<span class="hljs-number">2</span> * fetch(<span class="hljs-symbol">:period</span>).duration_in_days - <span class="hljs-number">4</span>).clamp(<span class="hljs-number">0</span>, <span class="hljs-number">40</span>)
-    merge!(<span class="hljs-symbol">price:</span> fetch(<span class="hljs-symbol">:price</span>) * (<span class="hljs-number">1</span> - discount / <span class="hljs-number">100.0</span>))
-  <span class="hljs-keyword">end</span>
-<span class="hljs-keyword">end</span></pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-28">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-28">&#182;</a>
               </div>
               <p>I did migrate the duration in the <code>Period</code> class at that point.</p>
 
@@ -678,18 +659,31 @@ Period = Struct.new(<span class="hljs-symbol">:start_at</span>, <span class="hlj
         </li>
         
         
+        <li id="section-28">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-28">&#182;</a>
+              </div>
+              <p>This approach has its flaws. <code>PricePerDay</code> and <code>PricePerMinute</code> aren’t
+exactly independent from each other. They serve the same purpose: to add
+<code>:price</code> to the context. And, <code>Discount</code> assume a <code>:price</code> will be in the
+context at the time it is applied, which make the <code>rules</code> array
+order-sensitive.</p>
+<p>All those assumptions aren’t great but could be addressed, I guess.</p>
+
+            </div>
+            
+        </li>
+        
+        
         <li id="section-29">
             <div class="annotation">
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-29">&#182;</a>
               </div>
-              <p>This approach has its flaws. <code>PricePerDayRule</code> and <code>PricePerMinuteRule</code> aren’t
-exactly independent from each other. They serve the same purpose: to add
-<code>:price</code> to the context. And, <code>DiscountRule</code> assume a <code>:price</code> will be in the
-context at the time it is applied, which make the <code>RentalPriceEngine::RULES</code>
-order-sensitive.</p>
-<p>All those assumptions aren’t great but could be addressed, I guess.</p>
+              <hr>
 
             </div>
             
@@ -701,19 +695,6 @@ order-sensitive.</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-30">&#182;</a>
-              </div>
-              <hr>
-
-            </div>
-            
-        </li>
-        
-        
-        <li id="section-31">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-31">&#182;</a>
               </div>
               <p>The idea behind this gem would be to provide simple tools to build <em>engines</em>
 like this and provide a good excuse to collect use-cases from outside.</p>
