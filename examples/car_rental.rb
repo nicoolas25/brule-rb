@@ -241,8 +241,12 @@ class Rental
   def price
     engine = RentalPrice::Engine.new(
       rules: [
-        RentalPrice::PricePerMinute.new,
-        RentalPrice::PricePerDay.new,
+        Brule::Utils::Either.new(
+          rules: [
+            RentalPrice::PricePerMinute.new,
+            RentalPrice::PricePerDay.new,
+          ],
+        ),
         RentalPrice::Discount.new,
       ],
     )

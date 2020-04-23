@@ -547,8 +547,12 @@ context.</p>
   <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">price</span></span>
     engine = RentalPrice::Engine.new(
       <span class="hljs-symbol">rules:</span> [
-        RentalPrice::PricePerMinute.new,
-        RentalPrice::PricePerDay.new,
+        Brule::Utils::Either.new(
+          <span class="hljs-symbol">rules:</span> [
+            RentalPrice::PricePerMinute.new,
+            RentalPrice::PricePerDay.new,
+          ],
+        ),
         RentalPrice::Discount.new,
       ],
     )

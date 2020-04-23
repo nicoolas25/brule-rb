@@ -2,12 +2,12 @@
 
 Gem::Specification.new do |s|
   s.name        = 'brule'
-  s.version     = '0.3.0'
+  s.version     = '0.3.1'
   s.date        = '2020-05-01'
   s.summary     = 'Split and orchestrate complex business rules'
   s.authors     = ['Nicolas Zermati']
   s.email       = ''
-  s.files       = %w[lib/brule.rb README.md]
+  s.files       = Dir['lib/**/*.rb'] + %w[README.md]
   s.homepage    = 'https://github.com/nicoolas25/brule-rb'
   s.license     = 'MIT'
 
