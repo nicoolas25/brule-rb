@@ -180,120 +180,136 @@ end
 # more structured way. That will have the advantage of splitting the
 # `#can_use_plan?` method and be easily extensible in the future.
 
-# A plan becomes a set of constraints.
+# A plan be represented by a set of constraints that
 
-Plan = Struct.new(:constraints, keyword_init: true)
-
-# And, the `can_use_plan?` reflects that.
-
-class Reservation
-  def can_use_plan?(plan:, history:)
-    context = { reservation: self, history: history }
-    plan.constraints.all? do |constraint|
-      constraint.satisfied?(context: context)
-    end
+Plan = Struct.new(:constraints, keyword_init: true) do
+  def available_for?(reservation:, reservation_history:)
+    engine = PlanAvailability::Engine.new(rules: constraints)
+    engine.call(
+      reservation: reservation,
+      reservation_history: reservation_history,
+    )
   end
 end
 
-# The missing piece are obviously the constraints part. From the implementation
-# of `#can_use_plan?`, we can guess that the `Plan#constraints` holds a list of
-# objects responding to `#satisfied?`.
-
 # Initializing the plan is now a bit different. The rule has been promoted as an
-# explicit concept here, it isn't an internal of the `#can_use_plan?` anymore.
+# explicit concept here, it isn't part of the internals anymore.
 
 frequency = Frequency.new(
   amount_of_hours: 4,
   periodicity: :weekly,
 )
 
-Plan.new(constraints: [
-  FrequencyRule.new(
-    frequency: frequency,
-  ),
-  DayOfWeekRule.new(
-    allowed_days: SUN | SAT,
-  ),
-  HourOfDayRule.new(
-    allowed_hours: [0, 1, 2, 3, 4, 18, 19, 20, 21, 22, 23],
-  ),
-  ConsecutiveSpreadingRule.new(
-    frequency: frequency,
-  ),
-  LocationRule.new(
-    scope: :type,
-    reference: "small",
-  ),
-])
+Plan.new(
+  constraints: [
+    PlanAvailability::Frequency.new(
+      frequency: frequency,
+    ),
+    PlanAvailability::DayOfWeek.new(
+      allowed_days: SUN | SAT,
+    ),
+    PlanAvailability::HourOfDay.new(
+      allowed_hours: [0, 1, 2, 3, 4, 18, 19, 20, 21, 22, 23],
+    ),
+    PlanAvailability::ConsecutiveSpreading.new(
+      frequency: frequency,
+    ),
+    PlanAvailability::Location.new(
+      scope: :type,
+      reference: "small",
+    ),
+  ],
+)
 
-# And the next bit would be to write those rules. Having one class per rule
-# gives a new space to put the logic that would only be related to a rule in
-# particular.
+# With `brule`, we have this for the whole `PlanAvailability` module.
 
-DayOfWeekRule = Struct.new(:allowed_days, keyword_init: true) do
-  def satisfied?(context:)
-    reservation_period = context.fetch(:reservation).period
-    (allowed_days & reservation_period.start_day) > 0
-  end
-end
+require "brule"
 
-HourOfDayRule = Struct.new(:allowed_hours, keyword_init: true) do
-  def satisfied?(context:)
-    reservation_period = context.fetch(:reservation).period
-    covered_hours(reservation_period).all? do |hour|
-      allowed_hours.include?(hour)
+module PlanAvailability
+  # First of all, we need to adapt the abstraction to make it more like a
+  # constraint. All rules from the `PlanAvailability` share the same context.
+  # The idea is to provide a `satified?` method in the subsclasses then to
+  # store the result of this in a `results` hash in the context itself.
+  class Constraint < Brule::Rule
+    context_accessor :reservation, :history
+
+    def apply
+      context[:results] ||= {}
+      context[:results][self] = satisfied?
+    end
+
+    private
+
+    # This method is fine to share in this example, even if used by a couple of
+    # subclasses.
+    def recent_hours(frequency)
+      recent_period = frequency.period_before(reservation.period.start_at)
+      reservation_history
+        .select { |reservation| reservation.overlap?(recent_period) }
+        .sum(0) { |reservation| reservation.duration_in_hours }
     end
   end
 
-  private
-
-  def covered_hours(period)
-    start_ts = period.start_at.to_i
-    end_ts = period.end_at.to_i
-    hour_step = 3600
-    start_ts.step(end_ts, hour_step).map { |ts| Time.at(ts).utc.hour }
-  end
-end
-
-LocationRule = Struct.new(:scope, :reference, keyword_init: true) do
-  def satisfied?(context:)
-    reservation_studio = context.fetch(:reservation).studio
-    reservation_studio[scope] == reference
-  end
-end
-
-FrequencyRule = Struct.new(:frequency, keyword_init: true) do
-  def satisfied?(context:)
-    history = context.fetch(:history)
-    period = context.fetch(:reservation).period
-    recent_hours = recent_hours(prior_to: period, history: history)
-    (recent_hours + period.duration_in_hours) <= frequency.amount_of_hours
+  # From this point, knowing if the plan is available is all about checking
+  # that all constraints were satisfied.
+  class Engine < Brule::Engine
+    def result
+      context.fetch(:results).all? do |_constraint, satisfied|
+        satisfied
+      end
+    end
   end
 
-  private
+  # And now, here are all the constraints.
 
-  def recent_hours(prior_to:, history:)
-    recent_period = frequency.period_before(prior_to.start_at)
-    history
-      .select { |reservation| reservation.overlap?(recent_period) }
-      .sum(0) { |reservation| reservation.duration_in_hours }
-  end
-end
+  class DayOfWeek < Constraint
+    config_reader :allowed_days
 
-ConsecutiveSpreadingRule = Struct.new(:frequency, keyword_init: true) do
-  def satisfied?(context:)
-    history = context.fetch(:history)
-    period = context.fetch(:reservation).period
-    recent_hours(prior_to: period, history: history).zero?
+    def satisfied?
+      (allowed_days & reservation.period.start_day) > 0
+    end
   end
 
-  private
+  class HourOfDay < Constraint
+    config_reader :allowed_hours
 
-  def recent_hours(prior_to:, history:)
-    recent_period = frequency.period_before(prior_to.start_at)
-    history
-      .select { |reservation| reservation.overlap?(recent_period) }
-      .sum(0) { |reservation| reservation.duration_in_hours }
+    def satisfied?
+      covered_hours.all? { |hour| allowed_hours.include?(hour) }
+    end
+
+    private
+
+    def covered_hours
+      start_ts = reservation.period.start_at.to_i
+      end_ts = reservation.period.end_at.to_i
+      hour_step = 3600
+      start_ts.step(end_ts, hour_step).map { |ts| Time.at(ts).utc.hour }
+    end
+  end
+
+  class Location < Constraint
+    config_reader :scope, :reference
+
+    def satisfied?
+      reservation.studio[scope] == reference
+    end
+  end
+
+  class Frequency < Constraint
+    config_reader :frequency
+
+    def satisfied?
+      total_hours = recent_hours(frequency) + reservation.period.duration_in_hours
+      total_hours <= frequency.amount_of_hours
+    end
+  end
+
+  class ConsecutiveSpreading < Constraint
+    config_reader :frequency
+
+    def satisfied?
+      recent_hours(frequency).zero?
+    end
   end
 end
 
@@ -306,12 +322,8 @@ end
 # the context.
 
 # In the example, even `#covered_hours` was taken out of the `Period` class as
-# its behavior is a bit too specific to our `HourOfDayRule`. Same for the
+# its behavior is a bit too specific to our `HourOfDay`. Same for the
 # `Studio#match?` method.
-
-# Sadly we already have a bit of duplication around `#recent_hours`. Having this
-# shared between rules wouldn't be a problem. A mixin could do that, but you
-# would have to do that explicitly.
 
 # ---
 #
@@ -320,10 +332,10 @@ end
 # scary but opens things up on the versioning side...
 
 # The Plan's serialization will hold references to classes, such as
-# `DayOfWeekRule`. It means that it is possible to version not only the
+# `DayOfWeek`. It means that it is possible to version not only the
 # `allowed_days` but also the class that will manipulate it. We can have
-# `DayOfWeekRule::V1` and `DayOfWeekRule::V2` or we can make `DayOfWeekRule`
-# support more arguments...
+# `DayOfWeek::V1` and `DayOfWeek::V2` or we can make `DayOfWeek` support more
+# arguments...
 
 require "sequel"
 

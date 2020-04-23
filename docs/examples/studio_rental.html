@@ -340,12 +340,20 @@ more structured way. That will have the advantage of splitting the
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-12">&#182;</a>
               </div>
-              <p>A plan becomes a set of constraints.</p>
+              <p>A plan be represented by a set of constraints that</p>
 
             </div>
             
             <div class="content"><div class='highlight'><pre>
-Plan = Struct.new(<span class="hljs-symbol">:constraints</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>)</pre></div></div>
+Plan = Struct.new(<span class="hljs-symbol">:constraints</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>) <span class="hljs-keyword">do</span>
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">available_for?</span><span class="hljs-params">(<span class="hljs-symbol">reservation:</span>, <span class="hljs-symbol">reservation_history:</span>)</span></span>
+    engine = PlanAvailability::Engine.new(<span class="hljs-symbol">rules:</span> constraints)
+    engine.call(
+      <span class="hljs-symbol">reservation:</span> reservation,
+      <span class="hljs-symbol">reservation_history:</span> reservation_history,
+    )
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
             
         </li>
         
@@ -356,19 +364,39 @@ Plan = Struct.new(<span class="hljs-symbol">:constraints</span>, <span class="hl
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-13">&#182;</a>
               </div>
-              <p>And, the <code>can_use_plan?</code> reflects that.</p>
+              <p>Initializing the plan is now a bit different. The rule has been promoted as an
+explicit concept here, it isn’t part of the internals anymore.</p>
 
             </div>
             
             <div class="content"><div class='highlight'><pre>
-<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Reservation</span></span>
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">can_use_plan?</span><span class="hljs-params">(<span class="hljs-symbol">plan:</span>, <span class="hljs-symbol">history:</span>)</span></span>
-    context = { <span class="hljs-symbol">reservation:</span> <span class="hljs-keyword">self</span>, <span class="hljs-symbol">history:</span> history }
-    plan.constraints.all? <span class="hljs-keyword">do</span> <span class="hljs-params">|constraint|</span>
-      constraint.satisfied?(<span class="hljs-symbol">context:</span> context)
-    <span class="hljs-keyword">end</span>
-  <span class="hljs-keyword">end</span>
-<span class="hljs-keyword">end</span></pre></div></div>
+frequency = Frequency.new(
+  <span class="hljs-symbol">amount_of_hours:</span> <span class="hljs-number">4</span>,
+  <span class="hljs-symbol">periodicity:</span> <span class="hljs-symbol">:weekly</span>,
+)
+
+Plan.new(
+  <span class="hljs-symbol">constraints:</span> [
+    PlanAvailability::Frequency.new(
+      <span class="hljs-symbol">frequency:</span> frequency,
+    ),
+    PlanAvailability::DayOfWeek.new(
+      <span class="hljs-symbol">allowed_days:</span> SUN <span class="hljs-params">| SAT,
+    ),
+    PlanAvailability::HourOfDay.new(
+      allowed_hours: [0, 1, 2, 3, 4, 18, 19, 20, 21, 22, 23],
+    ),
+    PlanAvailability::ConsecutiveSpreading.new(
+      frequency: frequency,
+    ),
+    PlanAvailability::Location.new(
+      scope: :type,
+      reference: "small",
+    ),
+  ],
+)
+
+</span></pre></div></div>
             
         </li>
         
@@ -379,11 +407,14 @@ Plan = Struct.new(<span class="hljs-symbol">:constraints</span>, <span class="hl
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-14">&#182;</a>
               </div>
-              <p>The missing piece are obviously the constraints part. From the implementation
-of <code>#can_use_plan?</code>, we can guess that the <code>Plan#constraints</code> holds a list of
-objects responding to <code>#satisfied?</code>.</p>
+              <p>With <code>brule</code>, we have this for the whole <code>PlanAvailability</code> module.</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-keyword">require</span> <span class="hljs-string">"brule"</span>
+
+<span class="hljs-class"><span class="hljs-keyword">module</span> <span class="hljs-title">PlanAvailability</span></span></pre></div></div>
             
         </li>
         
@@ -394,37 +425,22 @@ objects responding to <code>#satisfied?</code>.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-15">&#182;</a>
               </div>
-              <p>Initializing the plan is now a bit different. The rule has been promoted as an
-explicit concept here, it isn’t an internal of the <code>#can_use_plan?</code> anymore.</p>
+              <p>First of all, we need to adapt the abstraction to make it more like a
+constraint. All rules from the <code>PlanAvailability</code> share the same context.
+The idea is to provide a <code>satified?</code> method in the subsclasses then to
+store the result of this in a <code>results</code> hash in the context itself.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>
-frequency = Frequency.new(
-  <span class="hljs-symbol">amount_of_hours:</span> <span class="hljs-number">4</span>,
-  <span class="hljs-symbol">periodicity:</span> <span class="hljs-symbol">:weekly</span>,
-)
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Constraint</span> &lt; Brule::Rule</span>
+    context_accessor <span class="hljs-symbol">:reservation</span>, <span class="hljs-symbol">:history</span>
 
-Plan.new(<span class="hljs-symbol">constraints:</span> [
-  FrequencyRule.new(
-    <span class="hljs-symbol">frequency:</span> frequency,
-  ),
-  DayOfWeekRule.new(
-    <span class="hljs-symbol">allowed_days:</span> SUN <span class="hljs-params">| SAT,
-  ),
-  HourOfDayRule.new(
-    allowed_hours: [0, 1, 2, 3, 4, 18, 19, 20, 21, 22, 23],
-  ),
-  ConsecutiveSpreadingRule.new(
-    frequency: frequency,
-  ),
-  LocationRule.new(
-    scope: :type,
-    reference: "small",
-  ),
-])
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply</span></span>
+      context[<span class="hljs-symbol">:results</span>] <span class="hljs-params">||</span>= {}
+      context[<span class="hljs-symbol">:results</span>][<span class="hljs-keyword">self</span>] = satisfied?
+    <span class="hljs-keyword">end</span>
 
-</span></pre></div></div>
+    private</pre></div></div>
             
         </li>
         
@@ -435,79 +451,18 @@ Plan.new(<span class="hljs-symbol">constraints:</span> [
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-16">&#182;</a>
               </div>
-              <p>And the next bit would be to write those rules. Having one class per rule
-gives a new space to put the logic that would only be related to a rule in
-particular.</p>
+              <p>This method is fine to share in this example, even if used by a couple of
+subclasses.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>
-DayOfWeekRule = Struct.new(<span class="hljs-symbol">:allowed_days</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>) <span class="hljs-keyword">do</span>
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">satisfied?</span><span class="hljs-params">(<span class="hljs-symbol">context:</span>)</span></span>
-    reservation_period = context.fetch(<span class="hljs-symbol">:reservation</span>).period
-    (allowed_days &amp; reservation_period.start_day) &gt; <span class="hljs-number">0</span>
-  <span class="hljs-keyword">end</span>
-<span class="hljs-keyword">end</span>
-
-HourOfDayRule = Struct.new(<span class="hljs-symbol">:allowed_hours</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>) <span class="hljs-keyword">do</span>
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">satisfied?</span><span class="hljs-params">(<span class="hljs-symbol">context:</span>)</span></span>
-    reservation_period = context.fetch(<span class="hljs-symbol">:reservation</span>).period
-    covered_hours(reservation_period).all? <span class="hljs-keyword">do</span> <span class="hljs-params">|hour|</span>
-      allowed_hours.<span class="hljs-keyword">include</span>?(hour)
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">recent_hours</span><span class="hljs-params">(frequency)</span></span>
+      recent_period = frequency.period_before(reservation.period.start_at)
+      reservation_history
+        .select { <span class="hljs-params">|reservation|</span> reservation.overlap?(recent_period) }
+        .sum(<span class="hljs-number">0</span>) { <span class="hljs-params">|reservation|</span> reservation.duration_in_hours }
     <span class="hljs-keyword">end</span>
-  <span class="hljs-keyword">end</span>
-
-  private
-
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">covered_hours</span><span class="hljs-params">(period)</span></span>
-    start_ts = period.start_at.to_i
-    end_ts = period.end_at.to_i
-    hour_step = <span class="hljs-number">3600</span>
-    start_ts.step(end_ts, hour_step).map { <span class="hljs-params">|ts|</span> Time.at(ts).utc.hour }
-  <span class="hljs-keyword">end</span>
-<span class="hljs-keyword">end</span>
-
-LocationRule = Struct.new(<span class="hljs-symbol">:scope</span>, <span class="hljs-symbol">:reference</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>) <span class="hljs-keyword">do</span>
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">satisfied?</span><span class="hljs-params">(<span class="hljs-symbol">context:</span>)</span></span>
-    reservation_studio = context.fetch(<span class="hljs-symbol">:reservation</span>).studio
-    reservation_studio[scope] == reference
-  <span class="hljs-keyword">end</span>
-<span class="hljs-keyword">end</span>
-
-FrequencyRule = Struct.new(<span class="hljs-symbol">:frequency</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>) <span class="hljs-keyword">do</span>
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">satisfied?</span><span class="hljs-params">(<span class="hljs-symbol">context:</span>)</span></span>
-    history = context.fetch(<span class="hljs-symbol">:history</span>)
-    period = context.fetch(<span class="hljs-symbol">:reservation</span>).period
-    recent_hours = recent_hours(<span class="hljs-symbol">prior_to:</span> period, <span class="hljs-symbol">history:</span> history)
-    (recent_hours + period.duration_in_hours) &lt;= frequency.amount_of_hours
-  <span class="hljs-keyword">end</span>
-
-  private
-
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">recent_hours</span><span class="hljs-params">(<span class="hljs-symbol">prior_to:</span>, <span class="hljs-symbol">history:</span>)</span></span>
-    recent_period = frequency.period_before(prior_to.start_at)
-    history
-      .select { <span class="hljs-params">|reservation|</span> reservation.overlap?(recent_period) }
-      .sum(<span class="hljs-number">0</span>) { <span class="hljs-params">|reservation|</span> reservation.duration_in_hours }
-  <span class="hljs-keyword">end</span>
-<span class="hljs-keyword">end</span>
-
-ConsecutiveSpreadingRule = Struct.new(<span class="hljs-symbol">:frequency</span>, <span class="hljs-symbol">keyword_init:</span> <span class="hljs-literal">true</span>) <span class="hljs-keyword">do</span>
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">satisfied?</span><span class="hljs-params">(<span class="hljs-symbol">context:</span>)</span></span>
-    history = context.fetch(<span class="hljs-symbol">:history</span>)
-    period = context.fetch(<span class="hljs-symbol">:reservation</span>).period
-    recent_hours(<span class="hljs-symbol">prior_to:</span> period, <span class="hljs-symbol">history:</span> history).zero?
-  <span class="hljs-keyword">end</span>
-
-  private
-
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">recent_hours</span><span class="hljs-params">(<span class="hljs-symbol">prior_to:</span>, <span class="hljs-symbol">history:</span>)</span></span>
-    recent_period = frequency.period_before(prior_to.start_at)
-    history
-      .select { <span class="hljs-params">|reservation|</span> reservation.overlap?(recent_period) }
-      .sum(<span class="hljs-number">0</span>) { <span class="hljs-params">|reservation|</span> reservation.duration_in_hours }
-  <span class="hljs-keyword">end</span>
-<span class="hljs-keyword">end</span></pre></div></div>
+  <span class="hljs-keyword">end</span></pre></div></div>
             
         </li>
         
@@ -517,6 +472,93 @@ ConsecutiveSpreadingRule = Struct.new(<span class="hljs-symbol">:frequency</span
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-17">&#182;</a>
+              </div>
+              <p>From this point, knowing if the plan is available is all about checking
+that all constraints were satisfied.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Engine</span> &lt; Brule::Engine</span>
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">result</span></span>
+      context.fetch(<span class="hljs-symbol">:results</span>).all? <span class="hljs-keyword">do</span> <span class="hljs-params">|_constraint, satisfied|</span>
+        satisfied
+      <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-18">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-18">&#182;</a>
+              </div>
+              <p>And now, here are all the constraints.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">DayOfWeek</span> &lt; Constraint</span>
+    config_reader <span class="hljs-symbol">:allowed_days</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">satisfied?</span></span>
+      (allowed_days &amp; reservation.period.start_day) &gt; <span class="hljs-number">0</span>
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">HourOfDay</span> &lt; Constraint</span>
+    config_reader <span class="hljs-symbol">:allowed_hours</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">satisfied?</span></span>
+      covered_hours.all? { <span class="hljs-params">|hour|</span> allowed_hours.<span class="hljs-keyword">include</span>?(hour) }
+    <span class="hljs-keyword">end</span>
+
+    private
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">covered_hours</span></span>
+      start_ts = reservation.period.start_at.to_i
+      end_ts = reservation.period.end_at.to_i
+      hour_step = <span class="hljs-number">3600</span>
+      start_ts.step(end_ts, hour_step).map { <span class="hljs-params">|ts|</span> Time.at(ts).utc.hour }
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Location</span> &lt; Constraint</span>
+    config_reader <span class="hljs-symbol">:scope</span>, <span class="hljs-symbol">:reference</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">satisfied?</span></span>
+      reservation.studio[scope] == reference
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Frequency</span> &lt; Constraint</span>
+    config_reader <span class="hljs-symbol">:frequency</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">satisfied?</span></span>
+      total_hours = recent_hours(frequency) + reservation.period.duration_in_hours
+      total_hours &lt;= frequency.amount_of_hours
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ConsecutiveSpreading</span> &lt; Constraint</span>
+    config_reader <span class="hljs-symbol">:frequency</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">satisfied?</span></span>
+      recent_hours(frequency).zero?
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-19">&#182;</a>
               </div>
               <p>We don’t need <code>Location</code> anymore. We introduced it to delegate some work to
 them. Those abstraction could be useful but could create a false sense of
@@ -531,43 +573,15 @@ the context.</p>
         </li>
         
         
-        <li id="section-18">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-18">&#182;</a>
-              </div>
-              <p>In the example, even <code>#covered_hours</code> was taken out of the <code>Period</code> class as
-its behavior is a bit too specific to our <code>HourOfDayRule</code>. Same for the
-<code>Studio#match?</code> method.</p>
-
-            </div>
-            
-        </li>
-        
-        
-        <li id="section-19">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-19">&#182;</a>
-              </div>
-              <p>Sadly we already have a bit of duplication around <code>#recent_hours</code>. Having this
-shared between rules wouldn’t be a problem. A mixin could do that, but you
-would have to do that explicitly.</p>
-
-            </div>
-            
-        </li>
-        
-        
         <li id="section-20">
             <div class="annotation">
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-20">&#182;</a>
               </div>
-              <hr>
+              <p>In the example, even <code>#covered_hours</code> was taken out of the <code>Period</code> class as
+its behavior is a bit too specific to our <code>HourOfDay</code>. Same for the
+<code>Studio#match?</code> method.</p>
 
             </div>
             
@@ -580,9 +594,7 @@ would have to do that explicitly.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-21">&#182;</a>
               </div>
-              <p>From this representation of the plans, we could persist a given plan in a
-serialized way. Having a schema-less representation for constraints is a bit
-scary but opens things up on the versioning side…</p>
+              <hr>
 
             </div>
             
@@ -595,11 +607,26 @@ scary but opens things up on the versioning side…</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-22">&#182;</a>
               </div>
+              <p>From this representation of the plans, we could persist a given plan in a
+serialized way. Having a schema-less representation for constraints is a bit
+scary but opens things up on the versioning side…</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-23">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-23">&#182;</a>
+              </div>
               <p>The Plan’s serialization will hold references to classes, such as
-<code>DayOfWeekRule</code>. It means that it is possible to version not only the
+<code>DayOfWeek</code>. It means that it is possible to version not only the
 <code>allowed_days</code> but also the class that will manipulate it. We can have
-<code>DayOfWeekRule::V1</code> and <code>DayOfWeekRule::V2</code> or we can make <code>DayOfWeekRule</code>
-support more arguments…</p>
+<code>DayOfWeek::V1</code> and <code>DayOfWeek::V2</code> or we can make <code>DayOfWeek</code> support more
+arguments…</p>
 
             </div>
             
@@ -628,11 +655,11 @@ DB.create_table <span class="hljs-symbol">:plans</span> <span class="hljs-keywor
         </li>
         
         
-        <li id="section-23">
+        <li id="section-24">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-23">&#182;</a>
+                <a class="pilcrow" href="#section-24">&#182;</a>
               </div>
               <p>Using <code>Marshal</code> here is a dangerous choice:</p>
 <ul>
