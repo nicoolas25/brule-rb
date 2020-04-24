@@ -9,22 +9,25 @@ business rules. It helps when:
 
 ## How does it work
 
-If you use this gem, you'll have a couple of premade elements to build and test
-an _engine_ that, given a set of _rules_ and a _context_ will produce a
-_result_.
+The idea is very similar to function composition or Rack's middlewares. It is a
+layering abstraction where each layer works for the next layers in order for the
+stack to produce a single value.
+
+An _engine_ respond to `#call`, taking a `context` in argument. It produces a
+_result_ that is extracted from the _context_ in the `#result` method. Before
+doing that, the engine try to apply each of its _rules_.
+
+![Engine](https://github.com/nicoolas25/brule-rb/blob/master/docs/img/engine.png?raw=true)
+
+Each rule have two methods: `#trigger?` and `#apply`. `#apply` runs only when
+`trigger?` is true. `#apply` writes stuff to the context in order for the `Engine#result`
+to produce the _result_ of the computation.
+
+![Rule](https://github.com/nicoolas25/brule-rb/blob/master/docs/img/rule.png?raw=true)
 
 A typical usage for this kind of engine is to use it to compute the price of a
 service or a good. But, this is not limited to that use-case as an engine
 would be able to produce any kind of results.
-
-An _engine_ orchestrate _rules_ in a way that they would produce enough
-information for the engine to assemble a _result_. The rules are arranged in an
-ordered sequence and are picked depending on the _context_. Each rule will write
-in the context too.
-
-The idea is very similar to function composition or Rack's middlewares. It is a
-layering abstraction where each layer works for the next layers in order for the
-stack to produce a single value.
 
 ## How does it look
 
