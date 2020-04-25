@@ -11,17 +11,17 @@ business rules. It helps when:
 
 The idea is very similar to function composition or Rack's middlewares. It is a
 layering abstraction where each layer works for the next layers in order for the
-stack to produce a single value.
+whole to produce a single result.
 
 An _engine_ respond to `#call`, taking a `context` in argument. It produces a
-_result_ that is extracted from the _context_ in the `#result` method. Before
-doing that, the engine try to apply each of its _rules_.
+_result_ that is extracted from the _context_ by the `#result` method. Before
+doing that, the engine apply its _rules_.
 
 ![Engine](https://github.com/nicoolas25/brule-rb/blob/master/docs/img/engine.png?raw=true)
 
 Each rule have two methods: `#trigger?` and `#apply`. `#apply` runs only when
-`trigger?` is true. `#apply` writes stuff to the context in order for the `Engine#result`
-to produce the _result_ of the computation.
+`trigger?` is true. `#apply` writes stuff to the context for other rules and
+for the engine to produce the result.
 
 ![Rule](https://github.com/nicoolas25/brule-rb/blob/master/docs/img/rule.png?raw=true)
 
