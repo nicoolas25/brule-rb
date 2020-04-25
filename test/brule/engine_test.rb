@@ -20,7 +20,7 @@ class EngineTest < Minitest::Test
 
   def test_calling_the_engine_can_provide_a_context
     context_result = Object.new
-    context = Brule::Context.wrap(result: context_result)
+    context = { result: context_result }
     engine = Engine.new(rules: [])
     result = engine.call(context)
     assert_same context_result, result
@@ -30,7 +30,6 @@ class EngineTest < Minitest::Test
     engine = Engine.new(rules: [])
     value = Object.new
     engine.call(key: value)
-    assert_kind_of Brule::Context, engine.context
     assert_same value, engine.context[:key]
   end
 

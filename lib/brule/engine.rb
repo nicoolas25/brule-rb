@@ -9,7 +9,7 @@ module Brule
 
     def call(context = {})
       @history = {}
-      @context = Context.wrap(context)
+      @context = context
       snapshot!(tag: :initial)
       @rules.each { |rule| apply(rule) }
       result

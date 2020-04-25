@@ -29,7 +29,7 @@ class RuleTest < Minitest::Test
 
   def test_context_is_writable_and_readable
     rule = Rule.new({})
-    context = Brule::Context.new
+    context = {}
     rule.context = context
     assert_same context, rule.context
   end

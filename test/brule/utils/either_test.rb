@@ -26,7 +26,7 @@ class EitherTest < Minitest::Test
           MatchingRule.new,
         ],
       )
-      rule.context = Brule::Context.new
+      rule.context = {}
       rule.trigger?
     end
   end
@@ -39,7 +39,7 @@ class EitherTest < Minitest::Test
           MatchingRule.new,
         ],
       )
-      rule.context = Brule::Context.new(match: true)
+      rule.context = { match: true }
       rule.trigger?
     end
   end
@@ -51,7 +51,7 @@ class EitherTest < Minitest::Test
         MatchingRule.new(id: 2),
       ],
     )
-    rule.context = Brule::Context.new(only: 2)
+    rule.context = { only: 2 }
     assert rule.trigger?
   end
 
@@ -62,7 +62,7 @@ class EitherTest < Minitest::Test
         r2 = MatchingRule.new(id: 2),
       ],
     )
-    rule.context = Brule::Context.new(only: 2)
+    rule.context = { only: 2 }
     rule.apply
     assert_same r2, rule.context.fetch(:applied)
   end
@@ -74,7 +74,7 @@ class EitherTest < Minitest::Test
         r2 = MatchingRule.new(id: 2),
       ],
     )
-    rule.context = Brule::Context.new(only: 2)
+    rule.context = { only: 2 }
     assert_same r2, rule.to_tag
   end
 end
