@@ -21,9 +21,11 @@ doing that, the engine apply its _rules_.
 
 Each rule have two methods: `#trigger?` and `#apply`. `#apply` runs only when
 `trigger?` is true. `#apply` writes stuff to the context for other rules and
-for the engine to produce the result.
+for the engine to produce the result. Rules can be initialized with a
+_configuration_.
 
 ![Rule](https://github.com/nicoolas25/brule-rb/blob/master/docs/img/rule.png?raw=true)
+
 
 A typical usage for this kind of engine is to use it to compute the price of a
 service or a good. But, this is not limited to that use-case as an engine
