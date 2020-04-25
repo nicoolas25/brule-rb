@@ -151,6 +151,13 @@ engine.history(key: :price)   # => [
                               # => ]
 ```
 
+More examples here:
+
+- [Car rental](https://nicoolas25.github.io/brule-rb/examples/car_rental.html)
+- [Studio rental](https://nicoolas25.github.io/brule-rb/examples/studio_rental.html)
+- [Promo code](https://nicoolas25.github.io/brule-rb/examples/promo_code.html) (WIP)
+
+
 ## What does it bring to the table
 
 If you compare this approach with a simple method like this one:
