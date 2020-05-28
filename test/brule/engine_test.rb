@@ -44,6 +44,24 @@ class EngineTest < Minitest::Test
     def apply
       self.result = value
     end
+
+    def to_hash
+      super do |config|
+        # NOTE: stringify_keys would do
+        { 'value' => config[:value] }.tap do |hash|
+          hash['skip'] = config[:skip] if config.key?(:skip)
+        end
+      end
+    end
+
+    def self.from_hash(*)
+      super do |config_hash|
+        # NOTE: symbolize_keys would do
+        { value: config_hash['value'] }.tap do |config|
+          config[:skip] = config_hash['skip'] if config_hash.key?('skip')
+        end
+      end
+    end
   end
 
   def test_calling_the_engine_apply_rules_sequentially
@@ -77,5 +95,48 @@ class EngineTest < Minitest::Test
     assert_equal 30, engine.call
     assert_equal [[:initial, nil], [r1, 10], [r3, 30]],
                  engine.history(key: :result)
+  end
+
+  def test_engine_can_serialize_itself_into_a_hash
+    engine = Engine.new(
+      rules: [
+        ValueToResultRule.new(value: 10),
+        ValueToResultRule.new(value: 20, skip: true),
+        ValueToResultRule.new(value: 30),
+      ],
+    )
+    expected_hash = {
+      'engine_class' => 'EngineTest::Engine',
+      'rules' => [
+        {
+          'rule_class' => 'EngineTest::ValueToResultRule',
+          'config' => { 'value' => 10 },
+        },
+        {
+          'rule_class' => 'EngineTest::ValueToResultRule',
+          'config' => { 'value' => 20, 'skip' => true },
+        },
+        {
+          'rule_class' => 'EngineTest::ValueToResultRule',
+          'config' => { 'value' => 30 },
+        },
+      ],
+    }
+    assert_equal expected_hash, engine.to_hash
+  end
+
+  def test_engine_can_deserialize_itself_from_a_hash
+    engine = Engine.new(
+      rules: [
+        ValueToResultRule.new(value: 10),
+        ValueToResultRule.new(value: 20, skip: true),
+        ValueToResultRule.new(value: 30),
+      ],
+    )
+    engine = Brule::Engine.from_hash(engine.to_hash)
+
+    assert_kind_of Engine, engine
+    assert_equal [ValueToResultRule] * 3, engine.rules.map(&:class)
+    assert_equal [{ value: 10 }, { value: 20, skip: true }, { value: 30 }], engine.rules.map(&:config)
   end
 end
