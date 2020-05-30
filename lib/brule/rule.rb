@@ -15,7 +15,7 @@ module Brule
     end
 
     def to_hash
-      config_hash = block_given? ? yield(config) : config.to_hash
+      config_hash = block_given? ? yield(config) : config&.to_hash
       { 'rule_class' => self.class.name, 'config' => config_hash }
     end
 

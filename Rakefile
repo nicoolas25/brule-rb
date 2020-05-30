@@ -9,3 +9,13 @@ end
 
 desc 'Run tests'
 task default: :test
+
+desc 'Console'
+task :console do
+  $LOAD_PATH.unshift('./lib')
+
+  require 'irb'
+
+  ARGV.clear
+  IRB.start
+end
