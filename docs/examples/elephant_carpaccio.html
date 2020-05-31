@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>elephant_carpaccio.rb</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="../docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>elephant_carpaccio.rb</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">require</span> <span class="hljs-string">'bigdecimal'</span>
+<span class="hljs-keyword">require</span> <span class="hljs-string">'bigdecimal/util'</span>
+<span class="hljs-keyword">require</span> <span class="hljs-string">'brule'</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <p>In this example, I would like to build a pricing engine for a company.
+That company ships stuff to customer in various states.</p>
+<p>This is heavily inspired by the elephant carpaccio kata.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-class"><span class="hljs-keyword">module</span> <span class="hljs-title">Pricing</span></span>
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Engine</span> &lt; Brule::Engine</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>We start by defining what the engine should produce from its set of rules.
+Here we’ll extract the ‘price’ from the resulting context and that price
+will be what that engine will return when called.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">result</span></span>
+      context.fetch(<span class="hljs-string">'price'</span>)
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p>Then we have the rules forming the engine. Those rule will collaborate in
+order to compute the final ‘price’.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">OrderTotal</span> &lt; Brule::Rule</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>Some writer and reader methods are defined to better manipulate the
+context. Those are optional, <code>context</code> is accessible in the instance.
+Those helpers assumes the context quacks like a <code>Hash</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    context_reader <span class="hljs-string">'unit_price'</span>, <span class="hljs-string">'item_count'</span>
+    context_writer <span class="hljs-string">'price'</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p>OrderTotal will set the price as the ‘unit_price’ times the ‘item_count’.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply</span></span>
+      <span class="hljs-keyword">self</span>.price = unit_price * item_count
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Discount</span> &lt; Brule::Rule</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>As for the context, the <code>config_reader</code> helper is available to quickly
+access fields from the config. Again, this assumes the rule’s config is
+a <code>Hash</code> (or quacks like one).</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    config_reader <span class="hljs-string">'rates'</span>
+    context_accessor <span class="hljs-string">'price'</span>, <span class="hljs-string">'discount_rate'</span>, <span class="hljs-string">'discount_amount'</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p>If there is no applicable discount, that rule shouldn’t be applied.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">trigger?</span></span>
+      !applicable_discount.<span class="hljs-literal">nil</span>?
+    <span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <p>Discount subtracts a discount from price depending on discount rates.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply</span></span>
+      <span class="hljs-keyword">self</span>.discount_rate = applicable_discount.last
+      <span class="hljs-keyword">self</span>.discount_amount = (price * discount_rate).ceil
+      <span class="hljs-keyword">self</span>.price = price - discount_amount
+    <span class="hljs-keyword">end</span>
+
+    private
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">applicable_discount</span></span>
+      rates
+        .sort_by { <span class="hljs-params">|order_value, _|</span> order_value * -<span class="hljs-number">1</span> }
+        .find    { <span class="hljs-params">|order_value, _|</span> order_value &lt;= price }
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">StateTax</span> &lt; Brule::Rule</span>
+    config_reader <span class="hljs-string">'rates'</span>
+    context_reader <span class="hljs-string">'state'</span>
+    context_accessor <span class="hljs-string">'price'</span>, <span class="hljs-string">'state_tax'</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <p>StateTax will increase the price with the appropriate tax rates. It will
+track, in the context, the part of the price that was actually due to the
+taxes. This could be useful for debugging or to build more complex results
+in the engine.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply</span></span>
+      tax_rate = rates.fetch(state)
+      <span class="hljs-keyword">self</span>.state_tax = (price * tax_rate).ceil
+      <span class="hljs-keyword">self</span>.price = price + state_tax
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <p>At that point, an engine could be instaciated with the rules we defined.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+engine = Pricing::Engine.new(
+  <span class="hljs-symbol">rules:</span> [
+    Pricing::OrderTotal.new,
+    Pricing::Discount.new(</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-12">&#182;</a>
+              </div>
+              <p>The configuration of the rules can come from many sources. They could
+be hardcoded in the code, answer to some selection logic, or they could
+come from the database.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-string">'rates'</span> =&gt; [
+        [  <span class="hljs-number">1_000_00</span>, <span class="hljs-string">'0.03'</span>.to_d ],
+        [  <span class="hljs-number">5_000_00</span>, <span class="hljs-string">'0.05'</span>.to_d ],
+        [  <span class="hljs-number">7_000_00</span>, <span class="hljs-string">'0.07'</span>.to_d ],
+        [ <span class="hljs-number">10_000_00</span>, <span class="hljs-string">'0.10'</span>.to_d ],
+        [ <span class="hljs-number">50_000_00</span>, <span class="hljs-string">'0.15'</span>.to_d ],
+      ],
+    ),
+    Pricing::StateTax.new(
+      <span class="hljs-string">'rates'</span> =&gt; {
+        <span class="hljs-string">'UT'</span> =&gt; <span class="hljs-string">'0.0685'</span>.to_d,
+        <span class="hljs-string">'NV'</span> =&gt; <span class="hljs-string">'0.0800'</span>.to_d,
+        <span class="hljs-string">'TX'</span> =&gt; <span class="hljs-string">'0.0625'</span>.to_d,
+        <span class="hljs-string">'AL'</span> =&gt; <span class="hljs-string">'0.0400'</span>.to_d,
+        <span class="hljs-string">'CA'</span> =&gt; <span class="hljs-string">'0.0825'</span>.to_d,
+      },
+    ),
+  ],
+)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <p>The engine will run its rules within a context. That context will be passed
+be updated by each rule. The expected class for a context is a <code>Hash</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>context = {
+  <span class="hljs-string">'item_count'</span> =&gt; <span class="hljs-number">100</span>,
+  <span class="hljs-string">'unit_price'</span> =&gt; <span class="hljs-number">100_00</span>,
+  <span class="hljs-string">'state'</span> =&gt; <span class="hljs-string">'NV'</span>,
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <p>Finally, we can call the engine with a given context to get the result.
+An engine could be called on many contexts and you won’t need to rebuild an
+engine and its rules everytime you need a result.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>result = engine.call(context) <span class="hljs-comment"># =&gt; 9_720_00 ($9,720.00)</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+              <p>The engine allows to access the context to introspect what the rules have done
+with it.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>engine.context.fetch_values(
+  <span class="hljs-string">'discount_rate'</span>,             <span class="hljs-comment"># =&gt;      0.1 (10%)</span>
+  <span class="hljs-string">'discount_amount'</span>,           <span class="hljs-comment"># =&gt; 1_000_00 ($1,000.00)</span>
+  <span class="hljs-string">'state_tax'</span>,                 <span class="hljs-comment"># =&gt;   720_00 ($720.00)</span>
+)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-16">&#182;</a>
+              </div>
+              <p>A more in-depth way to introspect is to look at the the history.
+It returns the rules that were applied and the value for the key at each step.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>engine.history(<span class="hljs-symbol">key:</span> <span class="hljs-string">'price'</span>).map(&amp;<span class="hljs-symbol">:last</span>) <span class="hljs-comment"># =&gt; [nil, 10_000_00, 9_000_00, 9_720_00]</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-17">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-17">&#182;</a>
+              </div>
+              <p>One of the goals for that pattern is to make it easy to version an engine. To
+do that, it is either possible to change the configuration of the rules that
+are use within an engine or to change the rules themselves, using different
+classes.</p>
+<p>For instance, if we wanted to have taxes for 2020 and taxes for 2021, changing
+only the configuration would work. If we wanted to replace the flat discount
+rates by something more complex, then creating a new rule would be more
+appropriate than playing with the configuration, the context or the rule.</p>
+<p>Creating new rules shields the new behaviors from the complexity of the old
+ones. It is useful when the time of removing those old behaviors will come.
+For instance, once all order using the old discount logic are settled, we may
+decide to deprecate, even remove the old rule. In the meantime, the new
+behavior isn’t cluttered with weird conditionals and soon-to-be dead code.</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-18">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-18">&#182;</a>
+              </div>
+              <p>Now, in order to use multiple pricing strategies, over time, for A/B testing
+or for any other purpose, one could persist the engine. The engine by itself
+isn’t useful, it need to be associated to an <code>Order</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Order</span></span>
+  <span class="hljs-keyword">attr_reader</span> <span class="hljs-symbol">:id</span>, <span class="hljs-symbol">:item_count</span>, <span class="hljs-symbol">:unit_price</span>, <span class="hljs-symbol">:state</span>, <span class="hljs-symbol">:pricing_engine</span>
+  <span class="hljs-keyword">attr_writer</span> <span class="hljs-symbol">:id</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">initialize</span><span class="hljs-params">(attributes)</span></span>
+    @item_count = attributes.fetch(<span class="hljs-symbol">:item_count</span>)
+    @unit_price = attributes.fetch(<span class="hljs-symbol">:unit_price</span>)
+    @state = attributes.fetch(<span class="hljs-symbol">:state</span>)
+
+    @pricing_engine = attributes.fetch(<span class="hljs-symbol">:pricing_engine</span>)
+    @price = attributes.fetch(<span class="hljs-symbol">:price</span>, <span class="hljs-literal">nil</span>)
+    @id = attributes.fetch(<span class="hljs-symbol">:id</span>, <span class="hljs-literal">nil</span>)
+  <span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-19">&#182;</a>
+              </div>
+              <p>The interesting part is this one, either we get the price of the order or
+we compute the price using the pricing_engine. If we persist the price, then
+we can run consistency checks between <code>price</code> and <code>computed_price</code> as they
+should be the same.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">price</span></span>
+    @price <span class="hljs-params">||</span>= computed_price
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">computed_price</span></span>
+    @pricing_engine.call(
+      <span class="hljs-string">'item_count'</span> =&gt; @item_count,
+      <span class="hljs-string">'unit_price'</span> =&gt; @unit_price,
+      <span class="hljs-string">'state'</span> =&gt; @state,
+    )
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-20">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-20">&#182;</a>
+              </div>
+              <p>Now, we would like to persist such an order. To do that we’ll create a
+<code>Persistance</code> module that will be in charge to store and retrieve those
+orders.</p>
+<p>We’ll need a database, here the example is using the awesome Sequel to
+get an in-memory SQLite databse.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-keyword">require</span> <span class="hljs-string">'sequel'</span>
+<span class="hljs-keyword">require</span> <span class="hljs-string">'sqlite3'</span>
+
+DB = Sequel.sqlite
+
+DB.create_table <span class="hljs-symbol">:orders</span> <span class="hljs-keyword">do</span>
+  primary_key <span class="hljs-symbol">:id</span>, <span class="hljs-symbol">type:</span> <span class="hljs-string">'integer'</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-21">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-21">&#182;</a>
+              </div>
+              <p>Fields denormalizing the context</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  column <span class="hljs-symbol">:item_count</span>,        <span class="hljs-string">'integer'</span>,    <span class="hljs-symbol">null:</span> <span class="hljs-literal">false</span>
+  column <span class="hljs-symbol">:unit_price</span>,        <span class="hljs-string">'integer'</span>,    <span class="hljs-symbol">null:</span> <span class="hljs-literal">false</span>
+  column <span class="hljs-symbol">:state</span>,             <span class="hljs-string">'varchar(3)'</span>, <span class="hljs-symbol">null:</span> <span class="hljs-literal">false</span>
+
+  column <span class="hljs-symbol">:pricing_engine_id</span>, <span class="hljs-string">'integer'</span>,    <span class="hljs-symbol">null:</span> <span class="hljs-literal">false</span>
+  column <span class="hljs-symbol">:price</span>,             <span class="hljs-string">'integer'</span>,    <span class="hljs-symbol">null:</span> <span class="hljs-literal">false</span>
+<span class="hljs-keyword">end</span>
+
+DB.create_table <span class="hljs-symbol">:pricing_engines</span> <span class="hljs-keyword">do</span>
+  primary_key <span class="hljs-symbol">:id</span>, <span class="hljs-symbol">type:</span> <span class="hljs-string">'integer'</span>
+  column <span class="hljs-symbol">:engine_json</span>, <span class="hljs-string">'text'</span>, <span class="hljs-symbol">null:</span> <span class="hljs-literal">false</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-22">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-22">&#182;</a>
+              </div>
+              <p>We’ll serialize the engine using JSON.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">require</span> <span class="hljs-string">'json/add/bigdecimal'</span>
+<span class="hljs-keyword">require</span> <span class="hljs-string">'json'</span>
+
+<span class="hljs-class"><span class="hljs-keyword">module</span> <span class="hljs-title">Persistance</span></span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-23">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-23">&#182;</a>
+              </div>
+              <p>Both <code>Persistance::Order</code> and <code>Persistance::PricingEngine</code> are pretty
+basic. They do persist and retrieve stuff using an ID.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-class"><span class="hljs-keyword">module</span> <span class="hljs-title">Order</span></span>
+    module_function
+
+    Dataset = DB[<span class="hljs-symbol">:orders</span>]
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">persist</span><span class="hljs-params">(order)</span></span>
+      <span class="hljs-keyword">return</span> order.id <span class="hljs-keyword">if</span> order.id</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-24">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-24">&#182;</a>
+              </div>
+              <p>The order module take care of the <code>PricingEngine</code> persistance.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>      order.id = Dataset.insert(
+        <span class="hljs-symbol">item_count:</span> order.item_count,
+        <span class="hljs-symbol">unit_price:</span> order.unit_price,
+        <span class="hljs-symbol">state:</span> order.state,
+        <span class="hljs-symbol">pricing_engine_id:</span> PricingEngine.persist(order.pricing_engine),
+        <span class="hljs-symbol">price:</span> order.price,
+      )
+    <span class="hljs-keyword">end</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">retrieve</span><span class="hljs-params">(order_id)</span></span>
+      record = Dataset.first(<span class="hljs-symbol">id:</span> order_id)
+      <span class="hljs-symbol">:</span><span class="hljs-symbol">:Order</span>.new(
+        <span class="hljs-symbol">id:</span> record[<span class="hljs-symbol">:id</span>],
+        <span class="hljs-symbol">item_count:</span> record[<span class="hljs-symbol">:item_count</span>],
+        <span class="hljs-symbol">unit_price:</span> record[<span class="hljs-symbol">:unit_price</span>],
+        <span class="hljs-symbol">state:</span> record[<span class="hljs-symbol">:state</span>],
+        <span class="hljs-symbol">pricing_engine:</span> PricingEngine.retrieve(record[<span class="hljs-symbol">:pricing_engine_id</span>]),
+        <span class="hljs-symbol">price:</span> record[<span class="hljs-symbol">:price</span>],
+      )
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">module</span> <span class="hljs-title">PricingEngine</span></span>
+    module_function
+
+    Dataset = DB[<span class="hljs-symbol">:pricing_engines</span>]
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">persist</span><span class="hljs-params">(engine)</span></span>
+      engine_json = engine.to_hash.to_json
+      record = Dataset.first(<span class="hljs-symbol">engine_json:</span> engine_json)
+      record &amp;&amp; record[<span class="hljs-symbol">:id</span>] <span class="hljs-params">||</span> Dataset.insert(<span class="hljs-symbol">engine_json:</span> engine_json)
+    <span class="hljs-keyword">end</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">retrieve</span><span class="hljs-params">(engine_id)</span></span>
+      engine_json = Dataset.first(<span class="hljs-symbol">id:</span> engine_id).fetch(<span class="hljs-symbol">:engine_json</span>)
+      engine_hash = JSON.load(engine_json)
+      Brule::Engine.from_hash(engine_hash)
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-25">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-25">&#182;</a>
+              </div>
+              <p>Staring from the begining, we can create an order, with an engine.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+order_1 = Order.new(
+  <span class="hljs-symbol">item_count:</span> <span class="hljs-number">100</span>,
+  <span class="hljs-symbol">unit_price:</span> <span class="hljs-number">100_00</span>,
+  <span class="hljs-symbol">state:</span> <span class="hljs-string">'NV'</span>,
+  <span class="hljs-symbol">pricing_engine:</span> Pricing::Engine.new(
+    <span class="hljs-symbol">rules:</span> [
+      Pricing::OrderTotal.new,
+      Pricing::Discount.new(
+        <span class="hljs-string">'rates'</span> =&gt; [
+          [ <span class="hljs-number">1_000_00</span>, <span class="hljs-string">'0.03'</span>.to_d],
+          [ <span class="hljs-number">5_000_00</span>, <span class="hljs-string">'0.05'</span>.to_d],
+          [ <span class="hljs-number">7_000_00</span>, <span class="hljs-string">'0.07'</span>.to_d],
+          [<span class="hljs-number">10_000_00</span>, <span class="hljs-string">'0.10'</span>.to_d],
+          [<span class="hljs-number">50_000_00</span>, <span class="hljs-string">'0.15'</span>.to_d],
+        ],
+      ),
+      Pricing::StateTax.new(
+        <span class="hljs-string">'rates'</span> =&gt; {
+          <span class="hljs-string">'UT'</span> =&gt; <span class="hljs-string">'0.0685'</span>.to_d,
+          <span class="hljs-string">'NV'</span> =&gt; <span class="hljs-string">'0.0800'</span>.to_d,
+          <span class="hljs-string">'TX'</span> =&gt; <span class="hljs-string">'0.0625'</span>.to_d,
+          <span class="hljs-string">'AL'</span> =&gt; <span class="hljs-string">'0.0400'</span>.to_d,
+          <span class="hljs-string">'CA'</span> =&gt; <span class="hljs-string">'0.0825'</span>.to_d,
+        },
+      ),
+    ],
+  ),
+)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-26">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-26">&#182;</a>
+              </div>
+              <p>Then, we persist that order ang fetch it back, the <code>price</code> and the
+<code>computed_price</code> are the same!</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+order_id = Persistance::Order.persist(order_1)
+order_2 = Persistance::Order.retrieve(order_id)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-27">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-27">&#182;</a>
+              </div>
+              <p>We did a roundtrip to the database and we got back a similar order, including
+an identical engine as the original one.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>order_1.computed_price == order_2.computed_price &amp;&amp;
+  order_1.price == order_1.computed_price &amp;&amp;
+  order_2.price == order_2.computed_price</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-28">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-28">&#182;</a>
+              </div>
+              <p>Each order could persist its engine in order to be able to reproduce the same
+logic, even if that logic isn’t the most up to date. As I mentioned this is
+pretty useful to do A/B testing or to cleanly maintain some logic that must
+be kept workign over time.</p>
+
+            </div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>

@@ -33,7 +33,8 @@ would be able to produce any kind of results.
 
 ## How does it look
 
-Here is an example from the [Elephant Carpaccio][elephant] kata. The specs are:
+[Here](https://nicoolas25.github.io/brule-rb/examples/elephant_carpaccio.html)
+is an example from the [Elephant Carpaccio][elephant] kata. The specs are:
 
 > Accept 3 inputs from the user:
 >
@@ -44,115 +45,11 @@ Here is an example from the [Elephant Carpaccio][elephant] kata. The specs are:
 > Output the total price. Give a discount based on the total price, add state
 > tax based on the state and the discounted price.
 
-```ruby
-require "brule"
+[This](https://nicoolas25.github.io/brule-rb/examples/elephant_carpaccio.html)
+is the smallest example and the _best_ one to refer to. More examples are
+available:
 
-module Pricing
-  class Engine < Brule::Engine
-    def result
-      context.fetch(:price)
-    end
-  end
-
-  class OrderTotal < Brule::Rule
-    context_reader :unit_price, :item_count
-    context_writer :price
-
-    def apply
-      self.price = unit_price * item_count
-    end
-  end
-
-  class Discount < Brule::Rule
-    config_reader :rates
-    context_accessor :price, :discount_rate, :discount_amount
-
-    def trigger?
-      !applicable_discount.nil?
-    end
-
-    def apply
-      self.discount_rate = applicable_discount.last
-      self.discount_amount = (price * discount_rate).ceil
-      self.price = price - discount_amount
-    end
-
-    private
-
-    def applicable_discount
-      rates
-        .sort_by { |order_value, _| order_value * -1 }
-        .find    { |order_value, _| order_value <= context.fetch(:price) }
-    end
-  end
-
-  class StateTax < Brule::Rule
-    config_reader :rates
-    context_reader :state
-    context_accessor :price, :state_tax
-
-    def apply
-      tax_rate = rates.fetch(state)
-      self.state_tax = (price * tax_rate).ceil
-      self.price = price + state_tax
-    end
-  end
-end
-
-require "bigdecimal"
-require "bigdecimal/util"
-
-engine = Pricing::Engine.new(
-  rules: [
-    Pricing::OrderTotal.new,
-    Pricing::Discount.new(
-      rates: [
-        [  1_000_00, "0.03".to_d ],
-        [  5_000_00, "0.05".to_d ],
-        [  7_000_00, "0.07".to_d ],
-        [ 10_000_00, "0.10".to_d ],
-        [ 50_000_00, "0.15".to_d ],
-      ],
-    ),
-    Pricing::StateTax.new(
-      rates: {
-        "UT" => "0.0685".to_d,
-        "NV" => "0.0800".to_d,
-        "TX" => "0.0625".to_d,
-        "AL" => "0.0400".to_d,
-        "CA" => "0.0825".to_d,
-      },
-    ),
-  ],
-)
-
-result = engine.call(
-  item_count: 100,
-  unit_price: 100_00,
-  state: "NV",
-)
-
-# Access the main result
-result                        # => 9_720_00 ($9,720.00)
-
-# Access the context
-engine.context.fetch_values(
-  :discount_rate,             # =>      0.1 (10%)
-  :discount_amount,           # => 1_000_00 ($1,000.00)
-  :state_tax,                 # =>   720_00 ($720.00)
-)
-
-# Access the history
-engine.history(key: :price)   # => [
-                              # =>   [:initial,                                nil],
-                              # =>   [#<struct Pricing::OrderTotal ...>, 10_000_00],
-                              # =>   [#<struct Pricing::Discount ...>,    9_000_00],
-                              # =>   [#<struct Pricing::StateTax ...>,    9_720_00],
-                              # => ]
-```
-
-More examples here:
-
+- [Elephant Carpaccio](https://nicoolas25.github.io/brule-rb/examples/elephant_carpaccio.html)
 - [Car rental](https://nicoolas25.github.io/brule-rb/examples/car_rental.html)
 - [Studio rental](https://nicoolas25.github.io/brule-rb/examples/studio_rental.html)
 - [Promo code](https://nicoolas25.github.io/brule-rb/examples/promo_code.html) (WIP)
@@ -160,7 +57,8 @@ More examples here:
 
 ## What does it bring to the table
 
-If you compare this approach with a simple method like this one:
+If you compare [this approach](https://nicoolas25.github.io/brule-rb/examples/elephant_carpaccio.html)
+with a simple method like this one:
 
 ```ruby
 require "bigdecimal"
