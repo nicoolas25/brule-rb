@@ -33,4 +33,44 @@ class RuleTest < Minitest::Test
     rule.context = context
     assert_same context, rule.context
   end
+
+  def test_rules_has_config_helpers
+    config = { bar: 5 }
+    context = {}
+    rule_klass = Class.new(Rule) do
+      config_reader :bar
+
+      def apply
+        context[:foo] = bar
+      end
+    end
+
+    rule_klass.new(config).tap do |rule|
+      rule.context = context
+      rule.apply
+    end
+
+    assert 5, context.fetch_values(:foo)
+  end
+
+  def test_rules_has_context_helpers
+    context = { foo: 5, bar: 2 }
+    rule_klass = Class.new(Rule) do
+      context_accessor :foo
+      context_reader :bar
+      context_writer :baz
+
+      def apply
+        self.foo = foo + bar
+        self.baz = foo - bar
+      end
+    end
+
+    rule_klass.new.tap do |rule|
+      rule.context = context
+      rule.apply
+    end
+
+    assert [7, 3], context.fetch_values(:foo, :baz)
+  end
 end
