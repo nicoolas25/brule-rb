@@ -7,6 +7,8 @@ business rules. It helps when:
 * You want to make your tests independent from your production data.
 * You want to introspect the computation of a result.
 
+![Test](https://github.com/nicoolas25/brule-rb/workflows/Test/badge.svg?branch=master)
+
 ## How does it work
 
 The idea is very similar to function composition or Rack's middlewares. It is a

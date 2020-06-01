@@ -14,5 +14,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'minitest', '~> 5.14'
   s.add_development_dependency 'rake', '~> 13.0'
   s.add_development_dependency 'sequel', '~> 5.32'
+  s.add_development_dependency 'simplecov', '~> 0.18'
+  s.add_development_dependency 'simplecov-lcov', '~> 0.8'
   s.add_development_dependency 'sqlite3', '~> 1.4'
 end
