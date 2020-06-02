@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Brule
   Rule = Struct.new(:config) do
     attr_accessor :context

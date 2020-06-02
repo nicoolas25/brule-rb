@@ -182,13 +182,16 @@ end
 
 # A plan be represented by a set of constraints that
 
-Plan = Struct.new(:constraints, keyword_init: true) do
+Plan = Struct.new(:constraints, :engine, keyword_init: true) do
   def available_for?(reservation:, reservation_history:)
-    engine = PlanAvailability::Engine.new(rules: constraints)
     engine.call(
-      reservation: reservation,
-      reservation_history: reservation_history,
+      'reservation' => reservation,
+      'reservation_history' => reservation_history,
     )
+  end
+
+  def engine
+    @engine ||= PlanAvailability::Engine.new(rules: constraints)
   end
 end
 
@@ -203,20 +206,20 @@ frequency = Frequency.new(
 Plan.new(
   constraints: [
     PlanAvailability::Frequency.new(
-      frequency: frequency,
+      'frequency' => frequency,
     ),
     PlanAvailability::DayOfWeek.new(
-      allowed_days: SUN | SAT,
+      'allowed_days' => SUN | SAT,
     ),
     PlanAvailability::HourOfDay.new(
-      allowed_hours: [0, 1, 2, 3, 4, 18, 19, 20, 21, 22, 23],
+      'allowed_hours' => [0, 1, 2, 3, 4, 18, 19, 20, 21, 22, 23],
     ),
     PlanAvailability::ConsecutiveSpreading.new(
-      frequency: frequency,
+      'frequency' => frequency,
     ),
     PlanAvailability::Location.new(
-      scope: :type,
-      reference: "small",
+      'scope' => 'type',
+      'reference' => 'small',
     ),
   ],
 )
@@ -231,11 +234,11 @@ module PlanAvailability
   # The idea is to provide a `satified?` method in the subsclasses then to
   # store the result of this in a `results` hash in the context itself.
   class Constraint < Brule::Rule
-    context_accessor :reservation, :history
+    context_accessor 'reservation', 'reservation_history', 'results'
 
     def apply
-      context[:results] ||= {}
-      context[:results][self] = satisfied?
+      self.results ||= {}
+      self.results[self] = satified?
     end
 
     private
@@ -254,7 +257,7 @@ module PlanAvailability
   # that all constraints were satisfied.
   class Engine < Brule::Engine
     def result
-      context.fetch(:results).all? do |_constraint, satisfied|
+      context.fetch('results').all? do |_constraint, satisfied|
         satisfied
       end
     end
@@ -263,7 +266,7 @@ module PlanAvailability
   # And now, here are all the constraints.
 
   class DayOfWeek < Constraint
-    config_reader :allowed_days
+    config_reader 'allowed_days'
 
     def satisfied?
       (allowed_days & reservation.period.start_day) > 0
@@ -271,7 +274,7 @@ module PlanAvailability
   end
 
   class HourOfDay < Constraint
-    config_reader :allowed_hours
+    config_reader 'allowed_hours'
 
     def satisfied?
       covered_hours.all? { |hour| allowed_hours.include?(hour) }
@@ -288,15 +291,15 @@ module PlanAvailability
   end
 
   class Location < Constraint
-    config_reader :scope, :reference
+    config_reader 'scope', 'reference'
 
     def satisfied?
-      reservation.studio[scope] == reference
+      reservation.studio[scope.to_sym] == reference
     end
   end
 
   class Frequency < Constraint
-    config_reader :frequency
+    config_reader 'frequency'
 
     def satisfied?
       total_hours = recent_hours(frequency) + reservation.period.duration_in_hours
@@ -305,7 +308,7 @@ module PlanAvailability
   end
 
   class ConsecutiveSpreading < Constraint
-    config_reader :frequency
+    config_reader 'frequency'
 
     def satisfied?
       recent_hours(frequency).zero?
@@ -337,24 +340,24 @@ end
 # `DayOfWeek::V1` and `DayOfWeek::V2` or we can make `DayOfWeek` support more
 # arguments...
 
-require "sequel"
+require 'sequel'
 
 DB = Sequel.sqlite
 
 DB.create_table :plans do
-  primary_key :id, type: "integer"
-  column :constraints, "text", null: false
+  primary_key :id, type: 'integer'
+  column :engine_dump, 'text', null: false
 end
 
 class Persitence::Plan
   def insert(plan)
-    DB[:plans].insert(constraints: Marshal.dump(plan.constraints))
+    DB[:plans].insert(engine_dump: Marshal.dump(plan.engine.to_hash))
   end
 
   def retrieve(plan_id)
     plan_record = DB[:plans].first(id: plan_id)
-    constraints = Marshal.load(plan_record.fetch(:constraints))
-    Plan.new(constraints: constraints)
+    engine_hash = Marshal.load(plan_record.fetch(:engine_dump))
+    Plan.new(engine: Brule::Engine.from_json(engine_hash))
   end
 end
 
@@ -363,6 +366,5 @@ end
 # * it forces the _rules_ to be marshal-able (which isn't that bad), and
 # * it could have security implications.
 #
-# I did it for showing an example of persistence but other approaches could
-# be better. On the top of my head, I'm thinking about a more explicit
-# serialization of the rules and their configurations.
+# Using JSON would be slightly better. Have a look at the elephant carpaccio
+# example for that.

@@ -242,7 +242,7 @@ class Rental
     engine = RentalPrice::Engine.new(
       rules: [
         Brule::Utils::Either.new(
-          rules: [
+          'rules' => [
             RentalPrice::PricePerMinute.new,
             RentalPrice::PricePerDay.new,
           ],
@@ -251,9 +251,9 @@ class Rental
       ],
     )
     engine.call(
-      car_price_per_day: car_price_per_day,
-      selected_at: selected_at,
-      period: period,
+      'car_price_per_day' => car_price_per_day,
+      'selected_at' => selected_at,
+      'period' => period,
     )
   end
 end
@@ -261,7 +261,7 @@ end
 module RentalPrice
   class Engine < Brule::Engine
     def result
-      context.fetch(:price)
+      context.fetch('price')
     end
   end
 
@@ -274,8 +274,8 @@ module RentalPrice
   class PricePerDay < Brule::Rule
     APPLY_STRICTLY_BEFORE = Time.utc(2020, 9, 1)
 
-    context_reader :selected_at, :period, :car_price_per_day
-    context_writer :price
+    context_reader 'selected_at', 'period', 'car_price_per_day'
+    context_writer 'price'
 
     def trigger?
       selected_at < APPLY_STRICTLY_BEFORE
@@ -289,8 +289,8 @@ module RentalPrice
   class PricePerMinute < Brule::Rule
     APPLY_AFTER = PricePerDayRule::APPLY_STRICTLY_BEFORE
 
-    context_reader :selected_at, :period, :car_price_per_day
-    context_writer :price
+    context_reader 'selected_at', 'period', 'car_price_per_day'
+    context_writer 'price'
 
     def trigger?
       selected_at >= APPLY_AFTER
@@ -305,8 +305,8 @@ module RentalPrice
   class Discount < Brule::Rule
     APPLY_AFTER = Time.utc(2020, 6, 1)
 
-    context_reader :period
-    context_accessor :price, :discount
+    context_reader 'period'
+    context_accessor 'price', 'discount'
 
     def trigger?
       selected_at >= APPLY_AFTER
@@ -333,7 +333,7 @@ end
 
 # This approach has its flaws. `PricePerDay` and `PricePerMinute` aren't
 # exactly independent from each other. They serve the same purpose: to add
-# `:price` to the context. And, `Discount` assume a `:price` will be in the
+# `price` to the context. And, `Discount` assume a `price` will be in the
 # context at the time it is applied, which make the `rules` array
 # order-sensitive.
 #

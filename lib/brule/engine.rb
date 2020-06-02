@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Brule
   class Engine
     attr_reader :context, :rules

@@ -56,7 +56,6 @@ available:
 - [Studio rental](https://nicoolas25.github.io/brule-rb/examples/studio_rental.html)
 - [Promo code](https://nicoolas25.github.io/brule-rb/examples/promo_code.html) (WIP)
 
-
 ## What does it bring to the table
 
 If you compare [this approach](https://nicoolas25.github.io/brule-rb/examples/elephant_carpaccio.html)
