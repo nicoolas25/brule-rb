@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>cancellation_policy.rb</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="../docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>cancellation_policy.rb</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              <p>This example models the calculation of the fees someone would have to pay in
+case she cancels a service that was previously ordered. The result we wish to
+get the amount the client will have to pay if she cancels.</p>
+<p>We have two problems here, the first one is to tell if the client have to pay
+something. For that we have a set of exclusions that could cause a
+cancellation fee to be unapplicable:</p>
+<ol>
+<li>The order wasn’t canceled by the client</li>
+<li>The client canceled soon-enough after the order</li>
+<li>The client canceled early-enough before the service begins</li>
+</ol>
+<p>The second problem is to know how much the client will have to pay. It is a
+rate that is part of the term of service, same goes for the soon-enough or
+early-enough concepts.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-keyword">require</span> <span class="hljs-string">'brule'</span>
+
+<span class="hljs-class"><span class="hljs-keyword">module</span> <span class="hljs-title">Cancellation</span></span>
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Engine</span> &lt; Brule::Engine</span>
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">result</span></span>
+      context.fetch(<span class="hljs-string">'amount'</span>, <span class="hljs-number">0</span>)
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Exclusion</span> &lt; Brule::Rule</span>
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply</span></span>
+      context[<span class="hljs-string">'exclusions'</span>] <span class="hljs-params">||</span>= []
+      context[<span class="hljs-string">'exclusions'</span>] += [exclusion_name]
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">NotResponsible</span> &lt; Exclusion</span>
+    context_reader <span class="hljs-string">'canceled_by'</span>, <span class="hljs-string">'client'</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">trigger?</span></span>
+      canceled_by == client
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">RightAfterOrder</span> &lt; Exclusion</span>
+    config_reader <span class="hljs-string">'max_hours_after_order'</span>
+    context_reader <span class="hljs-string">'ordered_at'</span>, <span class="hljs-string">'canceled_at'</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">trigger?</span></span>
+      (ordered_at + (max_hours_after_order * <span class="hljs-number">3600</span>)) &lt;= canceled_at
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">LongBeforeStart</span> &lt; Exclusion</span>
+    config_reader <span class="hljs-string">'max_hours_before_start'</span>
+    context_reader <span class="hljs-string">'start_at'</span>, <span class="hljs-string">'canceled_at'</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">trigger?</span></span>
+      canceled_at &lt;= (start_at - (max_hours_before_start * <span class="hljs-number">3600</span>))
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">CancellationFeeAmount</span> &lt; Brule::Rule</span>
+    config_reader <span class="hljs-string">'cancellation_fee_rate'</span>
+    context_reader <span class="hljs-string">'order_amount'</span>
+    context_writer <span class="hljs-string">'amount'</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">trigger?</span></span>
+      context.fetch(<span class="hljs-string">'exclusions'</span>, []).none?
+    <span class="hljs-keyword">end</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">apply?</span></span>
+      <span class="hljs-keyword">self</span>.amount = order_amount * cancellation_fee_rate
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span>
+
+<span class="hljs-keyword">require</span> <span class="hljs-string">'bigdecimal'</span>
+<span class="hljs-keyword">require</span> <span class="hljs-string">'bigdecimal/util'</span>
+
+engine = Cancellation::Engine.new(
+  <span class="hljs-symbol">rules:</span> [
+    Cancellation::NotResponsible.new,
+    Cancellation::RightAfterOrder.new(
+      <span class="hljs-string">'max_hours_after_order'</span> =&gt; <span class="hljs-number">1</span>,
+    ),
+    Cancellation::LongBeforeStart.new(
+      <span class="hljs-string">'max_hours_before_start'</span> =&gt; <span class="hljs-number">48</span>,
+    ),
+    Cancellation::CancellationFeeAmount.new(
+      <span class="hljs-string">'cancellation_fee_rate'</span> =&gt; <span class="hljs-string">'0.50'</span>.to_d,
+    ),
+  ],
+)
+
+engine.call(
+  <span class="hljs-string">'client'</span> =&gt; <span class="hljs-string">'John Do'</span>,
+  <span class="hljs-string">'ordered_at'</span> =&gt; Time.parse(<span class="hljs-string">'2020-06-01 12:00:00'</span>),
+  <span class="hljs-string">'order_amount'</span> =&gt; <span class="hljs-string">'100'</span>.to_d,
+  <span class="hljs-string">'start_at'</span> =&gt; Time.parse(<span class="hljs-string">'2020-06-01 15:00:00'</span>),
+  <span class="hljs-string">'canceled_by'</span> =&gt; <span class="hljs-string">'John Do'</span>,
+  <span class="hljs-string">'canceled_at'</span> =&gt; Time.parse(<span class="hljs-string">'2020-06-01 12:45:00'</span>),
+)</pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>
